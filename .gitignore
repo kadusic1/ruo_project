@@ -1,0 +1,44 @@
+# ---------- Generic ----------
+.DS_Store
+*.log
+tmp/
+
+# ---------- Terraform ----------
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfvars
+!*.tfvars.example
+.terraformrc
+terraform.rc
+
+# ---------- Ansible ----------
+*.retry
+.vault-pass.txt
+hosts.ini
+
+# ---------- Go ----------
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+app/backend/main
+
+# ---------- Node / Next.js ----------
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+.env
+.env.*
+!*.example
