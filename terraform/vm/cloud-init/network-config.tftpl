@@ -1,0 +1,11 @@
+version: 2
+ethernets:
+  eth0:
+    match:
+      macaddress: "${mac}"
+    dhcp4: false
+    addresses:
+      - ${address}
+    routes:
+      - to: default
+        via: ${gateway}
