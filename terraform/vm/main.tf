@@ -4,6 +4,10 @@ terraform {
       source  = "dmacvicar/libvirt"
       version = "~> 0.8.3"
     }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
   }
 }
 
@@ -45,6 +49,17 @@ variable "ssh_key_path" {
   description = "javni SSH kljuc koji se ubacuje u VM"
   type        = string
   default     = "~/.ssh/id_ed25519.pub"
+}
+
+variable "ansible_inventory_file" {
+  description = "putanja do Ansible inventara; prazno = ansible/inventory.ini u repozitoriju"
+  type        = string
+  default     = ""
+}
+
+# putanja inventara: varijabla ako je zadana, inace ansible/ u repozitoriju
+locals {
+  ansible_inventory_file = abspath(coalesce(pathexpand(var.ansible_inventory_file), "${path.module}/../../ansible/inventory.ini"))
 }
 
 # jedan segment = jedna libvirt mreza (route mode) + jedna VM
@@ -147,4 +162,24 @@ output "mreze" {
       bridge   = mreza.bridge
     }
   }
+}
+
+# generisanje Ansible inventara iz Terraform konfiguracije (DO-6)
+resource "local_file" "inventory" {
+  filename = local.ansible_inventory_file
+  content  = <<-EOT
+    [web]
+    web1 ansible_host=${var.segments["web"].ip}
+
+    [app]
+    app1 ansible_host=${var.segments["app"].ip}
+
+    [db]
+    db1 ansible_host=${var.segments["db"].ip}
+
+    [all:vars]
+    ansible_user=student
+    ansible_ssh_private_key_file=${pathexpand(replace(var.ssh_key_path, ".pub", ""))}
+    ansible_python_interpreter=/usr/bin/python3
+  EOT
 }

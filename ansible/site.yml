@@ -1,0 +1,18 @@
+---
+# FAZA 2A (DO-6): Terraform generise inventar, Ansible provjerava vezu.
+- name: Priprema i provjera veze za sve virtuelne mašine
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: Čekaj da SSH veza postane dostupna
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+    - name: Čekaj da cloud-init završi bootstrap
+      ansible.builtin.command: cloud-init status --wait
+      changed_when: false
+
+    - name: Prikupi činjenice o sistemu (setup)
+      ansible.builtin.setup:

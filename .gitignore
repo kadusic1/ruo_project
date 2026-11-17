@@ -23,6 +23,7 @@ terraform.rc
 *.retry
 .vault-pass.txt
 hosts.ini
+inventory.ini
 
 # ---------- Go ----------
 *.exe
