@@ -12,6 +12,11 @@ func NewMux(repo db.InvoiceRepository, allowedOrigin string) http.Handler {
 	h := NewInvoicesHandler(repo)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok\n"))
+	})
 	mux.HandleFunc("GET /invoices", h.list)
 	mux.HandleFunc("POST /invoices", h.create)
 
