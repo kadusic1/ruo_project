@@ -1,0 +1,30 @@
+---
+# Mrezna politika kao podaci; sablon roles/firewall/templates/ruo.nft.j2 ih
+# prevodi u nftables pravila. Mijenja se ovdje, ne u pravilima.
+
+# Uplink se otkriva automatski: sucelje kroz koje host ima zadanu rutu.
+fw_uplink: "{{ ansible_default_ipv4.interface }}"
+
+# Iste podmreze kao variable "segments" u terraform/vm/main.tf.
+fw_segmenti:
+  web: 10.40.1.0/24
+  app: 10.40.2.0/24
+  db: 10.40.3.0/24
+
+# Cijeli adresni prostor projekta; vatrozid ne dira promet koji ga ne dodiruje
+# (Docker, drugi libvirt, hotspot...).
+fw_mreza: 10.40.0.0/16
+
+# internet -> segment
+fw_javno:
+  - { do: web, portovi: [80, 443] }
+
+# segment -> segment (slojevi: web -> app -> db)
+fw_pravila:
+  - { od: web, do: app, portovi: [8080] }
+  - { od: app, do: db, portovi: [3306] }
+
+# segmenti kojima je dozvoljen izlaz na internet (samo web)
+fw_izlaz: [web]
+
+fw_dest: /etc/nftables.d/ruo.nft

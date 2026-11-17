@@ -1,0 +1,4 @@
+---
+- name: ucitaj ruo.nft
+  ansible.builtin.command: "nft -f {{ fw_dest }}"
+  changed_when: true

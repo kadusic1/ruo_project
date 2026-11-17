@@ -1,0 +1,43 @@
+#!/usr/sbin/nft -f
+# Generisano iz ansible/group_vars/rtr/vars.yml (rola firewall). Ne uredjivati rucno.
+# Ucitavanje je idempotentno i ne dira tabele drugih programa (libvirt, docker).
+
+table ip ruo
+delete table ip ruo
+
+table ip ruo {
+  # promet KROZ host: zadano je dozvola, a promet koji dodiruje segmente projekta
+  # je default deny (zavrsni drop). Ostalo (Docker, drugi libvirt) se ne dira.
+  chain forward {
+    type filter hook forward priority filter; policy accept;
+
+    ct state established,related accept
+
+    # promet koji ne dodiruje segmente projekta nije predmet ovog vatrozida
+    ip saddr != {{ fw_mreza }} ip daddr != {{ fw_mreza }} accept
+
+    ct state invalid drop
+
+{% for r in fw_javno %}
+    # internet -> {{ r.do }}
+    iifname "{{ fw_uplink }}" ip daddr {{ fw_segmenti[r.do] }} tcp dport { {{ r.portovi | join(', ') }} } accept
+{% endfor %}
+{% for r in fw_pravila %}
+    # {{ r.od }} -> {{ r.do }}
+    ip saddr {{ fw_segmenti[r.od] }} ip daddr {{ fw_segmenti[r.do] }} tcp dport { {{ r.portovi | join(', ') }} } accept
+{% endfor %}
+{% for s in fw_izlaz %}
+    # izlaz: {{ s }} -> internet
+    ip saddr {{ fw_segmenti[s] }} oifname "{{ fw_uplink }}" accept
+{% endfor %}
+
+    limit rate 5/minute log prefix "ruo-drop: "
+    drop
+  }
+
+  # NAT: segmenti izlaze prema uplinku s adresom hosta
+  chain postrouting {
+    type nat hook postrouting priority srcnat;
+    oifname "{{ fw_uplink }}" ip saddr {{ fw_mreza }} counter masquerade
+  }
+}

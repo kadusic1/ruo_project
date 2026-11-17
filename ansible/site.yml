@@ -16,3 +16,13 @@
 
     - name: Prikupi činjenice o sistemu (setup)
       ansible.builtin.setup:
+
+# Vatrozid se postavlja zadnji: app i db trebaju internet za apt i povlacenje
+# slika prije nego im se izlaz zatvori.
+- name: Vatrozid hosta iz podataka
+  hosts: rtr
+  become: true
+  gather_facts: true
+  roles:
+    - firewall
+

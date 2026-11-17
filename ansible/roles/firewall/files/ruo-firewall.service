@@ -1,0 +1,13 @@
+[Unit]
+Description=RuO vatrozid (samo /etc/nftables.d/ruo.nft)
+Wants=network-online.target
+After=network-online.target libvirtd.service
+ConditionPathExists=/etc/nftables.d/ruo.nft
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/ruo.nft
+
+[Install]
+WantedBy=multi-user.target

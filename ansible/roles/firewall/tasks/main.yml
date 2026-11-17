@@ -1,0 +1,57 @@
+---
+- name: Provjeri da je uplink otkriven
+  ansible.builtin.assert:
+    that:
+      - ansible_default_ipv4.interface is defined
+      - ansible_default_ipv4.interface | length > 0
+    fail_msg: >-
+      Nije pronadjeno zadano mrezno sucelje (ansible_default_ipv4.interface).
+      Host mora imati zadanu rutu prema internetu.
+
+- name: Instaliraj nftables
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+    cache_valid_time: 3600
+
+- name: Napravi direktorij za pravila
+  ansible.builtin.file:
+    path: "{{ fw_dest | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Generisi pravila iz sablona (provjeri sintaksu prije zamjene)
+  ansible.builtin.template:
+    src: ruo.nft.j2
+    dest: "{{ fw_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: nft -c -f %s
+  notify: ucitaj ruo.nft
+
+- name: Ukljuci prosljedjivanje paketa
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    sysctl_set: true
+    reload: true
+
+- name: Instaliraj systemd unit za ucitavanje pravila pri podizanju
+  ansible.builtin.copy:
+    src: ruo-firewall.service
+    dest: /etc/systemd/system/ruo-firewall.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ukljuci systemd unit
+  ansible.builtin.systemd:
+    name: ruo-firewall.service
+    enabled: true
+    daemon_reload: true
+  # u --check modu se unit datoteka ne zapisuje, pa je systemd ne moze pronaci
+  when: not ansible_check_mode
