@@ -1,4 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL;
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export const STATUSES = ["draft", "sent", "paid"] as const;
 export type Status = (typeof STATUSES)[number];
@@ -22,11 +22,6 @@ export type InvoiceInput = {
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!API_URL) {
-    throw new Error(
-      "NEXT_PUBLIC_API_URL is not set. Copy .env.example to .env.local and restart the dev server."
-    );
-  }
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: init?.body ? { "Content-Type": "application/json" } : undefined,
