@@ -70,6 +70,7 @@ resource "libvirt_network" "segment" {
   name      = "seg-${each.key}"
   mode      = "route"
   addresses = [each.value.subnet]
+  bridge    = "br-${each.key}"
   autostart = true
 
   # adrese su staticke (netplan iz cloud-init-a), pa DHCP nije potreban
