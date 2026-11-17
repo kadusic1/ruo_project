@@ -1,7 +1,7 @@
 ---
 # FAZA 2A (DO-6): Terraform generise inventar, Ansible provjerava vezu.
 - name: Priprema i provjera veze za sve virtuelne mašine
-  hosts: all
+  hosts: web:app:db
   become: true
   gather_facts: false
 

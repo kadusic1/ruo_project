@@ -177,6 +177,9 @@ resource "local_file" "inventory" {
     [db]
     db1 ansible_host=${var.segments["db"].ip}
 
+    [rtr]
+    host ansible_connection=local
+
     [all:vars]
     ansible_user=student
     ansible_ssh_private_key_file=${pathexpand(replace(var.ssh_key_path, ".pub", ""))}
