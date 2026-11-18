@@ -11,12 +11,23 @@ fw_segmenti: "{{ tf_subnets }}"
 fw_javno:
   - { do: web, portovi: [80, 443] }
 
-# segment -> segment (slojevi: web -> app -> db)
+# segment -> segment (slojevi: web -> app -> db, svi -> dns)
 fw_pravila:
   - { od: web, do: app, portovi: [8080] }
   - { od: app, do: db, portovi: [3306] }
+  - { od: web, do: dns, proto: udp, portovi: [53] }
+  - { od: web, do: dns, proto: tcp, portovi: [53] }
+  - { od: app, do: dns, proto: udp, portovi: [53] }
+  - { od: app, do: dns, proto: tcp, portovi: [53] }
+  - { od: db, do: dns, proto: udp, portovi: [53] }
+  - { od: db, do: dns, proto: tcp, portovi: [53] }
 
 # segmenti kojima je dozvoljen izlaz na internet (samo web)
 fw_izlaz: [web]
+
+# izlaz na internet ogranicen na portove: dns smije samo na 53
+fw_izlaz_portovi:
+  - { od: dns, proto: udp, portovi: [53] }
+  - { od: dns, proto: tcp, portovi: [53] }
 
 fw_dest: /etc/nftables.d/ruo.nft

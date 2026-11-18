@@ -20,15 +20,19 @@ table ip ruo {
 
 {% for r in fw_javno %}
     # internet -> {{ r.do }}
-    iifname "{{ fw_uplink }}" ip daddr {{ fw_segmenti[r.do] }} tcp dport { {{ r.portovi | join(', ') }} } accept
+    iifname "{{ fw_uplink }}" ip daddr {{ fw_segmenti[r.do] }} {{ r.proto | default('tcp') }} dport { {{ r.portovi | join(', ') }} } accept
 {% endfor %}
 {% for r in fw_pravila %}
     # {{ r.od }} -> {{ r.do }}
-    ip saddr {{ fw_segmenti[r.od] }} ip daddr {{ fw_segmenti[r.do] }} tcp dport { {{ r.portovi | join(', ') }} } accept
+    ip saddr {{ fw_segmenti[r.od] }} ip daddr {{ fw_segmenti[r.do] }} {{ r.proto | default('tcp') }} dport { {{ r.portovi | join(', ') }} } accept
 {% endfor %}
 {% for s in fw_izlaz %}
     # izlaz: {{ s }} -> internet
     ip saddr {{ fw_segmenti[s] }} oifname "{{ fw_uplink }}" accept
+{% endfor %}
+{% for r in fw_izlaz_portovi %}
+    # izlaz: {{ r.od }} -> internet, samo navedeni portovi
+    ip saddr {{ fw_segmenti[r.od] }} oifname "{{ fw_uplink }}" {{ r.proto | default('tcp') }} dport { {{ r.portovi | join(', ') }} } accept
 {% endfor %}
 
     limit rate 5/minute log prefix "ruo-drop: "
