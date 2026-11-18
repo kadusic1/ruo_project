@@ -44,6 +44,14 @@
   roles:
     - dns
 
+# Docker se instalira dok je izlaz privremeno otvoren; dns je vec spreman,
+# pa apt na web/app/db moze razrijesiti imena.
+- name: Docker na web, app i db
+  hosts: web:app:db
+  become: true
+  roles:
+    - docker
+
 - name: Zatvori izlaz na internet
   hosts: rtr
   become: true

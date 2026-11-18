@@ -1,0 +1,33 @@
+---
+- name: Prikupi cinjenice o instaliranim paketima
+  ansible.builtin.package_facts:
+    manager: auto
+
+# Na drugo izvrsavanje paketi su vec tu, pa se apt keš ne dira i ne treba
+# internet (izlaz je poslije konfiguracije zatvoren).
+- name: Osvjezi apt kes samo kad neki paket nedostaje
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: docker_packages | difference(ansible_facts.packages.keys() | list) | length > 0
+
+- name: Instaliraj Docker
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: present
+
+- name: Ukljuci docker servis
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Dodaj korisnika u grupu docker
+  ansible.builtin.user:
+    name: "{{ docker_user }}"
+    groups: docker
+    append: true
+
+- name: Provjeri docker compose
+  ansible.builtin.command: docker compose version
+  changed_when: false
