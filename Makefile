@@ -59,10 +59,11 @@ dns: ## DNS zapisi servisa preko RFC 2136 (trazi TSIG kljuc iz make config)
 deploy: ## Ansible: isporuka aplikacije (rola app jos ne postoji)
 > @echo "deploy: nije implementirano (nema role app)"; exit 1
 
-test: ## test izolacije i DNS-a
+test: ## test izolacije, DNS-a i SSH-a
 > @$(call banner,test)
 > bash tests/isolation.sh
 > bash tests/dns.sh
+> bash tests/ssh.sh
 
 idem: ## dokaz idempotentnosti: plan = 0 (oba modula) i drugi config bez promjena
 > @$(MAKE) --no-print-directory plan

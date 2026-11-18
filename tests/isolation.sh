@@ -1,62 +1,25 @@
 #!/usr/bin/env bash
 # Matrica povezivosti za izolaciju segmenata (AO-6).
-# Na odredisnoj VM se privremeno otvori TCP slusalac, pa se s izvorne VM
-# pokusa veza preko /dev/tcp. Ocekivanja odgovaraju politici iz
+# Na odredisnoj VM se privremeno otvori TCP slusalac (osim ako na portu vec
+# radi pravi servis), pa se s izvorne VM pokusa veza preko /dev/tcp. Ocekivanja odgovaraju politici iz
 # ansible/group_vars/rtr/vars.yml. Adrese i SSH podaci se citaju iz inventara
 # koji generise Terraform.
 set -uo pipefail
-export PATH="$PATH:/usr/sbin:/sbin"
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INVENTORY="${INVENTORY:-$ROOT/ansible/inventory.ini}"
-
-if [ ! -r "$INVENTORY" ]; then
-  echo "GRESKA: nema inventara $INVENTORY (pokreni terraform apply)" >&2
-  exit 2
-fi
-
-group_host() { # grupa -> ansible_host prve masine u grupi
-  awk -v g="$1" '
-    $0 ~ "^\\[" g "\\]$" { u = 1; next }
-    /^\[/ { u = 0 }
-    u && /ansible_host=/ {
-      for (i = 1; i <= NF; i++)
-        if ($i ~ /^ansible_host=/) { sub(/^ansible_host=/, "", $i); print $i; exit }
-    }
-  ' "$INVENTORY"
-}
-
-all_vars() { # kljuc -> vrijednost iz [all:vars]
-  sed -n '/^\[all:vars\]/,$p' "$INVENTORY" |
-    awk -F= -v k="$1" '$1 == k { sub(/^[^=]*=/, ""); print; exit }'
-}
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 WEB="${WEB_HOST:-$(group_host web)}"
 APP="${APP_HOST:-$(group_host app)}"
 DB="${DB_HOST:-$(group_host db)}"
 DNS="${DNS_HOST:-$(group_host dns)}"
-SSH_USER="${SSH_USER:-$(all_vars ansible_user)}"
-SSH_KEY="${SSH_KEY:-$(all_vars ansible_ssh_private_key_file)}"
 INTERNET_TARGET="${INTERNET_TARGET:-1.1.1.1:443}"
 INT_IP="${INTERNET_TARGET%:*}"
 INT_PORT="${INTERNET_TARGET##*:}"
-
-SSH_USER="${SSH_USER:-student}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 
 if [ -z "$WEB" ] || [ -z "$APP" ] || [ -z "$DB" ] || [ -z "$DNS" ]; then
   echo "GRESKA: inventar nema adrese za web, app, db i dns" >&2
   exit 2
 fi
-
-SSH=(ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=no
-  -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5)
-
-ssh_to() { # host naredba...
-  local host="$1"
-  shift
-  "${SSH[@]}" "$SSH_USER@$host" "$@"
-}
 
 host_ip() { # oznaka segmenta -> adresa VM-a
   case "$1" in
@@ -73,34 +36,46 @@ s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
 s.bind(("0.0.0.0",int(sys.argv[1]))); s.listen(16)
 while True: s.accept()[0].close()'
 
+# slusaoci koje je ovaj test pokrenuo (host:port); pid se cuva u datoteci na VM-u
+# pa cleanup ubija samo svoj proces, a ne trazi ga po imenu (pkill -f bi mogao
+# pogoditi i vlastiti shell ili pravi servis)
 LISTENERS=()
+pidfile() { echo "/tmp/ruo-isolation-$1.pid"; }
+
 cleanup() {
   local entry host port
   for entry in "${LISTENERS[@]}"; do
     host="${entry%:*}"
     port="${entry##*:}"
-    ssh_to "$host" "pkill -f 'ruo-isolation-$port'" >/dev/null 2>&1 || true
+    ssh_to "$host" "kill \$(cat $(pidfile "$port")) 2>/dev/null; rm -f $(pidfile "$port")" \
+      >/dev/null 2>&1 || true
   done
 }
 trap cleanup EXIT
 
-slusaj() { # host port -> otvori slusalac i cekaj da bude dostupan s hosta
+# host -> VM ide kroz output, ne forward: provjera da neko slusa na portu
+dostupan() { # host port
+  timeout 1 bash -c "exec 3<>/dev/tcp/$1/$2" 2>/dev/null
+}
+
+slusaj() { # host port -> osigura da neko slusa na portu, spreman za provjeru s hosta
   local host="$1" port="$2" i
+  # ako pravi servis (npr. backend na 8080) vec slusa, ne diramo ga
+  if dostupan "$host" "$port"; then
+    echo "  ($host:$port: servis vec slusa, slusalac se ne pokrece)"
+    return 0
+  fi
   ssh_to "$host" \
-    "nohup timeout 120 python3 -c '$LISTENER' $port ruo-isolation-$port </dev/null >/dev/null 2>&1 &" \
+    "nohup timeout 120 python3 -c '$LISTENER' $port </dev/null >/dev/null 2>&1 & echo \$! >$(pidfile "$port")" \
     >/dev/null 2>&1 || true
   LISTENERS+=("$host:$port")
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    # host -> VM ide kroz output, ne forward: provjera da slusalac radi
-    if timeout 1 bash -c "exec 3<>/dev/tcp/$host/$port" 2>/dev/null; then
-      return 0
-    fi
+    dostupan "$host" "$port" && return 0
     sleep 0.2
   done
   return 1
 }
 
-RAZLIKA=0
 proba() { # izvor oznaka ip port ocekivano
   local src="$1" oznaka="$2" ip="$3" port="$4" ocek="$5" rez src_host
   src_host="$(host_ip "$src")"
