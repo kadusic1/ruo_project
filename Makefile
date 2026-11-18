@@ -12,13 +12,14 @@ ANSIBLE_ARGS ?= -K
 
 TF := terraform -chdir=terraform/vm
 TFD := terraform -chdir=terraform/dns
+IMAGE := packer/output/ruo-base.qcow2
 # TSIG tajna se cita iz fajla koji generise Ansible (rola dns), nikad iz Gita
 TSIG := TF_VAR_tsig_secret="$$(cat ansible/.secrets/tsig_ruo-tf 2>/dev/null || true)"
 
 banner = printf '\n\033[1;36m== %s\033[0m\n' '$(1)'
 need = command -v $(1) >/dev/null || { echo "Nedostaje '$(1)'"; exit 1; }
 
-.PHONY: help check infra plan config dns deploy test idem all destroy fw-clean
+.PHONY: help check image clean-image infra plan config dns deploy test idem all destroy fw-clean
 
 ##@ Pomoc
 help: ## ovaj popis
@@ -27,13 +28,22 @@ help: ## ovaj popis
 ##@ Okruzenje
 check: ## provjera alata, libvirta i SSH kljuca
 > @$(call need,terraform)
+> @$(call need,packer)
 > @$(call need,ansible-playbook)
 > @$(call need,virsh)
 > @virsh -c qemu:///system list >/dev/null || { echo "libvirt ne radi"; exit 1; }
 > @test -f ~/.ssh/id_ed25519.pub || { echo "Nema ~/.ssh/id_ed25519.pub (ssh-keygen -t ed25519)"; exit 1; }
 > @echo "sve je spremno"
 
-infra: check ## Terraform: mreze i VM-ovi, generise ansible/inventory.ini
+image: $(IMAGE) ## Packer: bazna slika s dockerom i bind9 (gradi se samo kad se kod promijeni)
+
+# pravilo nad datotekom: make gradi sliku samo ako je nema ili je Packer kod noviji
+$(IMAGE): packer/ubuntu.pkr.hcl packer/seed/user-data packer/seed/meta-data
+> @$(call banner,image)
+> packer init packer
+> packer build -force packer
+
+infra: check image ## Terraform: mreze i VM-ovi, generise ansible/inventory.ini
 > @$(call banner,infra)
 > $(TF) init -input=false
 > $(TF) apply -auto-approve
@@ -84,6 +94,10 @@ destroy: ## uklanja DNS zapise, VM-ove, mreze i vatrozid na hostu
 > $(TF) destroy -auto-approve
 > rm -rf terraform/dns/terraform.tfstate* ansible/.secrets
 > $(MAKE) --no-print-directory fw-clean
+
+# destroy ne brise sliku (artefakt, kao kes); potpuno od nule: make destroy clean-image all
+clean-image: ## brise Packer sliku (sljedeci make infra je ponovo gradi)
+> rm -rf packer/output
 
 fw-clean: ## uklanja pravila i systemd unit vatrozida s hosta
 > -sudo nft delete table ip ruo
