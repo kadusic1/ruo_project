@@ -49,9 +49,10 @@ dns: ## DNS zapisi servisa preko RFC 2136 (trazi TSIG kljuc iz make config)
 > $(TFD) init -input=false
 > TF_VAR_tsig_secret="$$(cat ansible/.secrets/tsig_ruo-tf)" $(TFD) apply -auto-approve
 
-test: ## test izolacije (web -> db mora pasti)
+test: ## test izolacije i DNS-a
 > @$(call banner,test)
 > bash tests/isolation.sh
+> bash tests/dns.sh
 
 all: infra config dns ## od praznog sistema do konfigurisanih VM-ova i DNS zapisa
 

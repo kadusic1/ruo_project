@@ -34,6 +34,7 @@ all_vars() { # kljuc -> vrijednost iz [all:vars]
 WEB="${WEB_HOST:-$(group_host web)}"
 APP="${APP_HOST:-$(group_host app)}"
 DB="${DB_HOST:-$(group_host db)}"
+DNS="${DNS_HOST:-$(group_host dns)}"
 SSH_USER="${SSH_USER:-$(all_vars ansible_user)}"
 SSH_KEY="${SSH_KEY:-$(all_vars ansible_ssh_private_key_file)}"
 INTERNET_TARGET="${INTERNET_TARGET:-1.1.1.1:443}"
@@ -43,8 +44,8 @@ INT_PORT="${INTERNET_TARGET##*:}"
 SSH_USER="${SSH_USER:-student}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 
-if [ -z "$WEB" ] || [ -z "$APP" ] || [ -z "$DB" ]; then
-  echo "GRESKA: inventar nema adrese za web, app i db" >&2
+if [ -z "$WEB" ] || [ -z "$APP" ] || [ -z "$DB" ] || [ -z "$DNS" ]; then
+  echo "GRESKA: inventar nema adrese za web, app, db i dns" >&2
   exit 2
 fi
 
@@ -62,6 +63,7 @@ host_ip() { # oznaka segmenta -> adresa VM-a
     web) echo "$WEB" ;;
     app) echo "$APP" ;;
     db)  echo "$DB" ;;
+    dns) echo "$DNS" ;;
     *)   echo "$1" ;;
   esac
 }
@@ -133,9 +135,15 @@ proba app db  "$DB"  3306 dozvoljeno     # app -> db: baza
 proba web db  "$DB"  3306 blokirano      # web -> db: preskakanje sloja
 proba web app "$APP" 22   blokirano      # web -> app: SSH
 proba app db  "$DB"  22   blokirano      # app -> db: SSH
+proba web dns "$DNS" 53   dozvoljeno     # web -> dns: BIND (TCP)
+proba app dns "$DNS" 53   dozvoljeno     # app -> dns: BIND (TCP)
+proba db  dns "$DNS" 53   dozvoljeno     # db -> dns: BIND (TCP)
+proba web dns "$DNS" 22   blokirano      # web -> dns: SSH
+proba dns db  "$DB"  3306 blokirano      # dns ne doseze bazu
 proba app internet "$INT_IP" "$INT_PORT" blokirano  # app nema izlaz
 proba db  internet "$INT_IP" "$INT_PORT" blokirano  # db nema izlaz
-proba web internet "$INT_IP" "$INT_PORT" dozvoljeno # samo web ima izlaz
+proba dns internet "$INT_IP" "$INT_PORT" blokirano  # dns samo na port 53
+proba web internet "$INT_IP" "$INT_PORT" dozvoljeno # samo web ima opci izlaz
 
 echo
 if [ "$RAZLIKA" -eq 0 ]; then
