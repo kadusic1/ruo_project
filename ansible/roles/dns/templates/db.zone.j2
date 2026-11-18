@@ -4,7 +4,7 @@ $TTL {{ dns_ttl }}
         3600       ; refresh
         900        ; retry
         604800     ; expire
-        300        ; minimum
+        {{ dns_ttl }}       ; minimum
         )
     IN  NS  ns1.{{ dns_zone }}.
 ns1 IN  A   {{ dns_ip }}

@@ -44,6 +44,7 @@
     owner: root
     group: bind
     mode: "0644"
+    validate: named-checkconf %s
   notify: reload named
 
 - name: Postavi named.conf.local
@@ -53,6 +54,7 @@
     owner: root
     group: bind
     mode: "0644"
+    validate: named-checkconf %s
   notify: reload named
 
 # force: false - BIND poslije dodaje zapise i mijenja serial; rola ga ne smije
@@ -67,7 +69,7 @@
     force: false
   notify: reload named
 
-- name: Provjeri BIND konfiguraciju
+- name: Provjeri cjelokupnu BIND konfiguraciju
   ansible.builtin.command: named-checkconf
   changed_when: false
   when: not ansible_check_mode

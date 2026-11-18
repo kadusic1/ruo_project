@@ -13,9 +13,10 @@
           - tf_subnets is defined
           - tf_ips is defined
           - dns_zone is defined
+          - dns_ttl is defined
         fail_msg: >-
           Nema ansible/group_vars/all/terraform.yml. Pokreni `make infra`
-          (Terraform generise podmreze, adrese i zonu) pa ponovi `make config`.
+          (Terraform generise podmreze, adrese, zonu i TTL) pa ponovi `make config`.
         quiet: true
 
 - name: Priprema i provjera veze za sve virtuelne mašine
@@ -37,7 +38,10 @@
 
 # Redoslijed: vatrozid prvo zatvori sve osim propisanih tokova, pa se izlaz
 # privremeno otvori za instalacije (DNS, Docker) i na kraju ponovo zatvori
-# ucitavanjem istih pravila iz datoteke.
+# ucitavanjem istih pravila iz datoteke. Otvaranje i zatvaranje neto ne mijenjaju
+# stanje, pa nisu `changed`. Ako izvrsavanje pukne prije zatvaranja, izlaz ostaje
+# otvoren do sljedeceg `make config` (ili reboota hosta, ruo-firewall.service);
+# `make test` (isolation) to otkriva.
 - name: Vatrozid hosta iz podataka
   hosts: rtr
   become: true

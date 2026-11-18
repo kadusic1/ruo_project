@@ -1,20 +1,11 @@
 ---
-- name: Prikupi cinjenice o instaliranim paketima
-  ansible.builtin.package_facts:
-    manager: auto
-
-# Na drugo izvrsavanje paketi su vec tu, pa se apt keš ne dira i ne treba
-# internet (izlaz je poslije konfiguracije zatvoren).
-- name: Osvjezi apt kes samo kad neki paket nedostaje
-  ansible.builtin.apt:
-    update_cache: true
-    cache_valid_time: 3600
-  when: docker_packages | difference(ansible_facts.packages.keys() | list) | length > 0
-
+# apt s `name` prijavljuje promjenu samo pri instalaciji, ne pri osvjezavanju kesa
 - name: Instaliraj Docker
   ansible.builtin.apt:
     name: "{{ docker_packages }}"
     state: present
+    update_cache: true
+    cache_valid_time: 3600
 
 - name: Ukljuci docker servis
   ansible.builtin.systemd:

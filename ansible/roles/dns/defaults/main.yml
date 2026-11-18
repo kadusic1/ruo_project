@@ -6,7 +6,10 @@ dns_packages:
 
 # zona i njen pocetni fajl; BIND poslije sam mijenja fajl (RFC 2136)
 dns_zone_file: "/var/lib/bind/db.{{ dns_zone }}"
-dns_ttl: 300
 
-# TSIG kljuc kojim Terraform (provider dns) dodaje zapise u zonu
+# dns_ttl nema podrazumijevanu vrijednost: dolazi iz terraform/vm
+# (group_vars/all/terraform.yml)
+
+# TSIG kljuc kojim Terraform (provider dns) dodaje zapise; isti naziv koriste
+# terraform/dns (locals.tf) i Makefile (putanja tajne)
 dns_tsig_key_name: ruo-tf

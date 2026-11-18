@@ -3,5 +3,5 @@ docker_packages:
   - docker.io
   - docker-compose-v2
 
-# korisnik koji smije pokretati docker bez sudo
-docker_user: student
+# korisnik koji smije pokretati docker bez sudo: isti kao u inventaru (Terraform)
+docker_user: "{{ ansible_user }}"
