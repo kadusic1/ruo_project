@@ -16,12 +16,10 @@ variable "disk_size" {
   default     = 10 * 1024 * 1024 * 1024
 }
 
-variable "base_image_url" {
-  description = "cloud slika od koje nastaju diskovi VM-a (datirani release, ne `current`)"
+variable "base_image" {
+  description = "bazna slika diskova VM-a koju gradi Packer (make image); relativno na ovaj modul"
   type        = string
-  # pinovano radi ponovljivosti; sha256 iz .../noble/20261017/SHA256SUMS:
-  # 04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94
-  default = "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img"
+  default     = "../../packer/output/ruo-base.qcow2"
 }
 
 variable "pool" {

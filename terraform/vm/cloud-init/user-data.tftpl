@@ -6,6 +6,8 @@ users:
   - name: student
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
+    # grupa docker postoji u Packer slici: docker bez sudo
+    groups: [docker]
     lock_passwd: true
     ssh_authorized_keys:
       - ${ssh_key}

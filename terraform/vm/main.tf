@@ -32,12 +32,13 @@ resource "libvirt_network" "segment" {
   }
 }
 
-# bazna slika se preuzima jednom, a disk VM-a je njen "copy-on-write" potomak
+# bazna slika je Packer artefakt (docker i bind9 su vec u njoj), a disk VM-a je
+# njen "copy-on-write" potomak
 resource "libvirt_volume" "base" {
   name   = "ubuntu-noble-base.qcow2"
   pool   = var.pool
   format = "qcow2"
-  source = var.base_image_url
+  source = abspath("${path.module}/${var.base_image}")
 }
 
 resource "libvirt_volume" "disk" {
