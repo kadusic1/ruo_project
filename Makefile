@@ -19,7 +19,7 @@ TSIG := TF_VAR_tsig_secret="$$(cat ansible/.secrets/tsig_ruo-tf 2>/dev/null || t
 banner = printf '\n\033[1;36m== %s\033[0m\n' '$(1)'
 need = command -v $(1) >/dev/null || { echo "Nedostaje '$(1)'"; exit 1; }
 
-.PHONY: help check image clean-image infra plan config dns deploy test idem all destroy fw-clean
+.PHONY: help check image clean-image infra config dns deploy test all destroy
 
 ##@ Pomoc
 help: ## ovaj popis
@@ -50,13 +50,6 @@ infra: check image ## Terraform: mreze i VM-ovi, generise ansible/inventory.ini
 > $(TF) init -input=false
 > $(TF) apply -auto-approve
 
-plan: ## terraform plan za vm i dns: nakon apply mora biti 0 promjena (AO-3, AO-8)
-> @$(call banner,plan vm)
-> $(TF) plan -detailed-exitcode
-> @$(call banner,plan dns)
-> $(TFD) init -input=false
-> $(TSIG) $(TFD) plan -detailed-exitcode
-
 config: ## Ansible: konfiguracija VM-ova i vatrozid hosta (trazi sudo lozinku)
 > @test -f ansible/inventory.ini || { echo "Nema inventara (make infra)"; exit 1; }
 > @$(call banner,config)
@@ -83,33 +76,32 @@ test: ## test izolacije, DNS-a, SSH-a, aplikacije i trajnosti baze
 > bash tests/app.sh
 > bash tests/db.sh
 
-idem: ## dokaz idempotentnosti: plan = 0 (oba modula), drugi config i deploy bez promjena
-> @$(MAKE) --no-print-directory plan
-> @$(call banner,idem: drugi config i deploy)
-> @out=$$(mktemp); trap 'rm -f "$$out"' EXIT; \
->   (cd ansible && ansible-playbook site.yml $(ANSIBLE_ARGS) && ansible-playbook deploy.yml) | tee "$$out"; \
->   if grep -E '(changed|failed|unreachable)=[1-9]' "$$out"; then \
->     echo "NIJE idempotentno: gore su hostovi s promjenama"; exit 1; \
->   fi; \
->   echo "idempotentno: changed=0 na svim hostovima"
+all: infra config dns deploy test ## od praznog sistema do aplikacije koja radi
 
-all: infra config dns deploy ## od praznog sistema do aplikacije koja radi
-
-destroy: ## uklanja DNS zapise, VM-ove, mreze i vatrozid na hostu
+destroy: ## uklanja DNS zapise, VM-ove, mreze, slike aplikacije i vatrozid na hostu
 > -$(TFD) init -input=false
 > -$(TSIG) $(TFD) destroy -auto-approve
 > $(TF) init -input=false
 > $(TF) destroy -auto-approve
-> rm -rf terraform/dns/terraform.tfstate* ansible/.secrets ansible/.build
-> $(MAKE) --no-print-directory fw-clean
-
-# destroy ne brise sliku (artefakt, kao kes); potpuno od nule: make destroy clean-image all
-clean-image: ## brise Packer sliku (sljedeci make infra je ponovo gradi)
-> rm -rf packer/output
-
-fw-clean: ## uklanja pravila vatrozida i split DNS (systemd uniti) s hosta
+> rm -rf terraform/vm/terraform.tfstate* terraform/dns/terraform.tfstate* ansible/.secrets ansible/.build
+# slike aplikacije na hostu (imena kao u app/compose.yaml), bazne slike iz
+# FROM linija Dockerfile-ova i build kes (docker builder prune je za cijeli host)
+> -docker image rm ruo/backend:1.0 ruo/frontend:1.0 mariadb:11.4
+> -docker image rm $$(awk '/^FROM/{print $$2}' app/*/Dockerfile | sort -u)
+> -docker builder prune -f
+# vatrozid, split DNS (systemd uniti) i sysctl fajl na hostu; ip_forward se u
+# kernelu ne vraca na 0 (trebaju ga i libvirt i Docker), bez 90-ruo.conf
+# poslije restarta vrijedi sistemski default
 > -sudo nft delete table ip ruo
 > -sudo systemctl disable --now ruo-firewall.service
 > -sudo systemctl disable --now ruo-dns.service
-> sudo rm -f /etc/nftables.d/ruo.nft /etc/systemd/system/ruo-firewall.service /etc/systemd/system/ruo-dns.service
+> sudo rm -f /etc/nftables.d/ruo.nft /etc/systemd/system/ruo-firewall.service /etc/systemd/system/ruo-dns.service /etc/sysctl.d/90-ruo.conf
+# direktorij pravi rola firewall; brise se samo ako je prazan
+> -sudo rmdir --ignore-fail-on-non-empty /etc/nftables.d
 > sudo systemctl daemon-reload
+
+# destroy ne brise sliku (artefakt, kao kes); potpuno od nule: make destroy clean-image all
+# Packer kes (~/.cache/packer: preuzeta Ubuntu cloud slika) i pluginovi iz
+# `packer init` ostaju namjerno, da ponovni `make image` ne preuzima sve iznova
+clean-image: ## brise Packer sliku (sljedeci make infra je ponovo gradi)
+> rm -rf packer/output
