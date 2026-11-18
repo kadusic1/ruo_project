@@ -4,3 +4,12 @@
 # Cijeli adresni prostor projekta; vatrozid ne dira promet koji ga ne dodiruje
 # (Docker, drugi libvirt, hotspot...). Treba i dns VM-u za allow-query.
 fw_mreza: 10.40.0.0/16
+
+# Slike aplikacije po sloju (rola app); imena moraju odgovarati
+# app/compose.yaml. Host ih gradi ili povlaci, a VM-ovi ih dobijaju preko
+# docker save/load jer app i db nemaju izlaz na internet (DO-5).
+app_images:
+  web: ruo/frontend:1.0
+  app: ruo/backend:1.0
+  db: mariadb:11.4
+

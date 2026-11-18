@@ -25,6 +25,7 @@ terraform.rc
 hosts.ini
 inventory.ini
 ansible/.secrets/
+ansible/.build/
 ansible/group_vars/all/terraform.yml
 
 # ---------- Go ----------

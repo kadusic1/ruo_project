@@ -1,0 +1,51 @@
+---
+# Isporuka aplikacije (make deploy). Slike gradi i povlaci host, a VM-ovi ih
+# dobijaju preko docker save/load: app i db nemaju izlaz na internet (DO-5).
+- name: Slike aplikacije na hostu
+  hosts: rtr
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Napravi direktorij za tar slike
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/.build"
+        state: directory
+        mode: "0700"
+
+    # build i pull mijenjaju samo kes na hostu, ne servere; promjenu na VM-u
+    # prijavljuje rola app (drugaciji ID slike). Bez provenance atestacije
+    # (vremenska oznaka) isti kod daje isti ID, pa se slika ne salje ponovo.
+    - name: Izgradi backend i frontend (multi-stage Dockerfile)
+      ansible.builtin.command: >-
+        docker compose -f {{ playbook_dir }}/../app/compose.yaml
+        --profile app --profile web build
+      environment:
+        BUILDX_NO_DEFAULT_ATTESTATIONS: "1"
+      changed_when: false
+
+    - name: Povuci sliku baze
+      ansible.builtin.command: >-
+        docker compose -f {{ playbook_dir }}/../app/compose.yaml
+        --profile db pull
+      changed_when: false
+
+# redoslijed slojeva: backend pri startu pinga bazu, a nginx pri startu
+# razrjesava app.projekat.lab
+- name: Baza
+  hosts: db
+  become: true
+  roles:
+    - app
+
+- name: Backend
+  hosts: app
+  become: true
+  roles:
+    - app
+
+- name: Frontend
+  hosts: web
+  become: true
+  roles:
+    - app

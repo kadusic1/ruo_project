@@ -1,0 +1,129 @@
+---
+- name: Procitaj ili generisi lozinke baze
+  ansible.builtin.set_fact:
+    app_db_password: >-
+      {{ lookup('ansible.builtin.password',
+                app_secrets_dir ~ '/db_password length=32 chars=ascii_letters,digits') }}
+    app_db_root_password: >-
+      {{ lookup('ansible.builtin.password',
+                app_secrets_dir ~ '/db_root_password length=32 chars=ascii_letters,digits') }}
+  no_log: true
+
+# Slika se prenosi samo ako se ID na VM-u razlikuje od ID-a na hostu, pa drugi
+# run ne prenosi nista (idempotentnost).
+- name: ID slike na hostu
+  ansible.builtin.command: docker image inspect --format '{{ "{{.Id}}" }}' {{ app_image }}
+  register: app_host_image
+  delegate_to: host
+  become: false
+  changed_when: false
+
+- name: ID slike na VM-u
+  ansible.builtin.command: docker image inspect --format '{{ "{{.Id}}" }}' {{ app_image }}
+  register: app_vm_image
+  changed_when: false
+  failed_when: false
+
+- name: Prenesi sliku s hosta (docker save/load)
+  when: app_vm_image.stdout != app_host_image.stdout
+  block:
+    - name: Sacuvaj sliku u tar na hostu
+      ansible.builtin.command: >-
+        docker save -o {{ app_build_dir }}/{{ app_profile }}.tar {{ app_image }}
+      delegate_to: host
+      become: false
+      changed_when: true
+
+    - name: Kopiraj tar na VM
+      ansible.builtin.copy:
+        src: "{{ app_build_dir }}/{{ app_profile }}.tar"
+        dest: "/tmp/ruo-{{ app_profile }}.tar"
+        mode: "0600"
+
+    - name: Ucitaj sliku
+      ansible.builtin.command: docker load -i /tmp/ruo-{{ app_profile }}.tar
+      changed_when: true
+
+    - name: Obrisi tar na VM-u
+      ansible.builtin.file:
+        path: "/tmp/ruo-{{ app_profile }}.tar"
+        state: absent
+
+- name: Napravi direktorij aplikacije
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Kopiraj compose.yaml
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../app/compose.yaml"
+    dest: "{{ app_dir }}/compose.yaml"
+    mode: "0644"
+
+# compose montira semu u docker-entrypoint-initdb.d (samo pri prvom startu baze)
+- name: Kopiraj semu baze
+  when: app_profile == 'db'
+  block:
+    - name: Napravi direktorij za semu
+      ansible.builtin.file:
+        path: "{{ app_dir }}/backend/db"
+        state: directory
+        mode: "0755"
+
+    - name: Kopiraj schema.sql
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../app/backend/db/schema.sql"
+        dest: "{{ app_dir }}/backend/db/schema.sql"
+        mode: "0644"
+
+- name: Postavi .env (samo varijable ovog sloja)
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+# slike su vec na VM-u: bez builda i bez povlacenja; izmjena .env ili slike
+# sama rekreira kontejner
+- name: Pokreni servis sloja
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_dir }}"
+    profiles: ["{{ app_profile }}"]
+    build: never
+    pull: never
+    state: present
+
+- name: Cekaj da baza bude spremna
+  when: app_profile == 'db'
+  ansible.builtin.command:
+    cmd: docker compose exec -T db healthcheck.sh --connect --innodb_initialized
+    chdir: "{{ app_dir }}"
+  register: app_health
+  until: app_health.rc == 0
+  retries: 30
+  delay: 3
+  changed_when: false
+
+- name: Cekaj da backend odgovara
+  when: app_profile == 'app'
+  ansible.builtin.uri:
+    url: http://localhost:8080/health
+  register: app_health
+  until: app_health.status == 200
+  retries: 30
+  delay: 2
+
+# cijeli lanac: nginx -> app.projekat.lab -> db.projekat.lab
+- name: Cekaj da frontend preko backenda cita fakture
+  when: app_profile == 'web'
+  ansible.builtin.uri:
+    url: http://localhost/api/invoices
+  register: app_health
+  until: app_health.status == 200
+  retries: 30
+  delay: 2

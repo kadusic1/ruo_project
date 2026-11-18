@@ -1,0 +1,20 @@
+---
+# direktorij projekta na VM-u (compose.yaml i .env)
+app_dir: /opt/ruo-app
+
+app_db_name: invoices
+app_db_user: invoices
+
+# komponente se adresiraju samo DNS imenima zone projekta (AO-7)
+app_db_host: "db.{{ dns_zone }}"
+app_backend_url: "http://app.{{ dns_zone }}:8080"
+
+# slika ovog sloja (app_images je u group_vars/all, dijeli ga deploy.yml)
+app_image: "{{ app_images[app_profile] }}"
+
+# tar slike na hostu (u .gitignore)
+app_build_dir: "{{ playbook_dir }}/.build"
+
+# lozinke baze: generisu se pri prvom pokretanju i cuvaju samo na hostu
+# (ansible/.secrets/, kao TSIG kljuc); ne idu u Git (AO-9, DO-9)
+app_secrets_dir: "{{ playbook_dir }}/.secrets"
