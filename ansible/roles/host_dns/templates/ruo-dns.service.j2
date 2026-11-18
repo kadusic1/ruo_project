@@ -1,0 +1,18 @@
+# Generisano iz Ansible role host_dns, ne uredjivati rucno.
+# Split DNS na hostu: samo upiti za {{ dns_zone }} idu na dns VM ({{ dns_ip }}).
+# libvirt pri svakom startu mreze ponovo pravi {{ host_dns_bridge }}, a resolved
+# tada zaboravlja postavke; unit je vezan za uredjaj pa se primijeni svaki put.
+[Unit]
+Description=RuO: {{ dns_zone }} preko dns VM-a na {{ host_dns_bridge }}
+BindsTo={{ host_dns_device }}
+After={{ host_dns_device }} systemd-resolved.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/resolvectl dns {{ host_dns_bridge }} {{ dns_ip }}
+ExecStart=/usr/bin/resolvectl domain {{ host_dns_bridge }} ~{{ dns_zone }}
+ExecStop=-/usr/bin/resolvectl revert {{ host_dns_bridge }}
+
+[Install]
+WantedBy={{ host_dns_device }}

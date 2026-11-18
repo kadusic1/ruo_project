@@ -1,0 +1,18 @@
+---
+# host (preglednik, curl) razrjesava imena zone projekta, npr. web.projekat.lab
+- name: Postavi unit za split DNS
+  ansible.builtin.template:
+    src: ruo-dns.service.j2
+    dest: /etc/systemd/system/ruo-dns.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart ruo-dns
+
+- name: Ukljuci unit (vezan za bridge dns segmenta)
+  ansible.builtin.systemd:
+    name: ruo-dns.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode

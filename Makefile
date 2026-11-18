@@ -105,8 +105,9 @@ destroy: ## uklanja DNS zapise, VM-ove, mreze i vatrozid na hostu
 clean-image: ## brise Packer sliku (sljedeci make infra je ponovo gradi)
 > rm -rf packer/output
 
-fw-clean: ## uklanja pravila i systemd unit vatrozida s hosta
+fw-clean: ## uklanja pravila vatrozida i split DNS (systemd uniti) s hosta
 > -sudo nft delete table ip ruo
 > -sudo systemctl disable --now ruo-firewall.service
-> sudo rm -f /etc/nftables.d/ruo.nft /etc/systemd/system/ruo-firewall.service
+> -sudo systemctl disable --now ruo-dns.service
+> sudo rm -f /etc/nftables.d/ruo.nft /etc/systemd/system/ruo-firewall.service /etc/systemd/system/ruo-dns.service
 > sudo systemctl daemon-reload

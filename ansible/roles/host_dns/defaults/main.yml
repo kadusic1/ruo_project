@@ -1,0 +1,6 @@
+---
+# bridge dns segmenta na hostu; isto ime pravi terraform/vm (br-<segment>)
+host_dns_bridge: br-dns
+
+# systemd ime uredjaja: "-" u imenu sucelja postaje "\x2d"
+host_dns_device: "sys-subsystem-net-devices-{{ host_dns_bridge | replace('-', '\\x2d') }}.device"

@@ -68,6 +68,10 @@ done
 rezultat "web: getent hosts db.$ZONE" "$DB_IP" \
   "$(ssh_to "$WEB" "getent hosts db.$ZONE" 2>/dev/null | awk '{ print $1; exit }')"
 
+# host razrjesava zonu preko dns VM-a (rola host_dns, split DNS u resolved-u)
+rezultat "host: getent hosts web.$ZONE" "$WEB_IP" \
+  "$(getent hosts "web.$ZONE" | awk '{ print $1; exit }')"
+
 # prosljedjivanje vanjskih imena preko forwarders
 VANJSKO="$(ssh_to "$APP" "getent hosts archive.ubuntu.com" 2>/dev/null | awk '{ print $1; exit }')"
 if [ -n "$VANJSKO" ]; then

@@ -50,3 +50,11 @@
   become: true
   roles:
     - dns
+
+# zona vec postoji (rola dns), pa host moze slati upite za nju na dns VM
+- name: Host razrjesava zonu projekta
+  hosts: rtr
+  become: true
+  gather_facts: false
+  roles:
+    - host_dns
