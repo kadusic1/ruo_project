@@ -30,6 +30,8 @@ check: ## provjera alata, libvirta i SSH kljuca
 > @$(call need,terraform)
 > @$(call need,packer)
 > @$(call need,ansible-playbook)
+> @$(call need,docker)
+> @docker info >/dev/null 2>&1 || { echo "docker ne radi (korisnik u grupi docker?)"; exit 1; }
 > @$(call need,virsh)
 > @virsh -c qemu:///system list >/dev/null || { echo "libvirt ne radi"; exit 1; }
 > @test -f ~/.ssh/id_ed25519.pub || { echo "Nema ~/.ssh/id_ed25519.pub (ssh-keygen -t ed25519)"; exit 1; }
@@ -66,8 +68,12 @@ dns: ## DNS zapisi servisa preko RFC 2136 (trazi TSIG kljuc iz make config)
 > $(TFD) init -input=false
 > $(TSIG) $(TFD) apply -auto-approve
 
-deploy: ## Ansible: isporuka aplikacije (rola app jos ne postoji)
-> @echo "deploy: nije implementirano (nema role app)"; exit 1
+# host gradi slike i salje ih VM-ovima (docker save/load); sudo na hostu ne treba
+deploy: ## Ansible: build slika na hostu, isporuka i pokretanje aplikacije
+> @test -f ansible/inventory.ini || { echo "Nema inventara (make infra)"; exit 1; }
+> @test -s ansible/.secrets/tsig_ruo-tf || { echo "Nema DNS-a (make config pa make dns)"; exit 1; }
+> @$(call banner,deploy)
+> cd ansible && ansible-playbook deploy.yml
 
 test: ## test izolacije, DNS-a i SSH-a
 > @$(call banner,test)
@@ -75,24 +81,24 @@ test: ## test izolacije, DNS-a i SSH-a
 > bash tests/dns.sh
 > bash tests/ssh.sh
 
-idem: ## dokaz idempotentnosti: plan = 0 (oba modula) i drugi config bez promjena
+idem: ## dokaz idempotentnosti: plan = 0 (oba modula), drugi config i deploy bez promjena
 > @$(MAKE) --no-print-directory plan
-> @$(call banner,idem: drugi config)
+> @$(call banner,idem: drugi config i deploy)
 > @out=$$(mktemp); trap 'rm -f "$$out"' EXIT; \
->   (cd ansible && ansible-playbook site.yml $(ANSIBLE_ARGS)) | tee "$$out"; \
+>   (cd ansible && ansible-playbook site.yml $(ANSIBLE_ARGS) && ansible-playbook deploy.yml) | tee "$$out"; \
 >   if grep -E '(changed|failed|unreachable)=[1-9]' "$$out"; then \
 >     echo "NIJE idempotentno: gore su hostovi s promjenama"; exit 1; \
 >   fi; \
 >   echo "idempotentno: changed=0 na svim hostovima"
 
-all: infra config dns ## od praznog sistema do konfigurisanih VM-ova i DNS zapisa
+all: infra config dns deploy ## od praznog sistema do aplikacije koja radi
 
 destroy: ## uklanja DNS zapise, VM-ove, mreze i vatrozid na hostu
 > -$(TFD) init -input=false
 > -$(TSIG) $(TFD) destroy -auto-approve
 > $(TF) init -input=false
 > $(TF) destroy -auto-approve
-> rm -rf terraform/dns/terraform.tfstate* ansible/.secrets
+> rm -rf terraform/dns/terraform.tfstate* ansible/.secrets ansible/.build
 > $(MAKE) --no-print-directory fw-clean
 
 # destroy ne brise sliku (artefakt, kao kes); potpuno od nule: make destroy clean-image all
