@@ -1,10 +1,5 @@
 ---
-- name: Instaliraj BIND
-  ansible.builtin.apt:
-    name: "{{ dns_packages }}"
-    state: present
-    update_cache: true
-    cache_valid_time: 3600
+# BIND je u Packer slici (packer/ubuntu.pkr.hcl); rola ga samo konfigurise.
 
 # Tajna se generise pri prvom pokretanju i cuva samo na kontrolnoj masini
 # (ansible/.secrets/ je u .gitignore). Isti fajl cita Makefile za Terraform.

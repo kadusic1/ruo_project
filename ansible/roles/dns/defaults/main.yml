@@ -1,9 +1,4 @@
 ---
-dns_packages:
-  - bind9
-  - bind9-utils
-  - bind9-dnsutils
-
 # zona i njen pocetni fajl; BIND poslije sam mijenja fajl (RFC 2136)
 dns_zone_file: "/var/lib/bind/db.{{ dns_zone }}"
 
