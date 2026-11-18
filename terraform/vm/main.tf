@@ -219,3 +219,18 @@ resource "local_file" "inventory" {
     ansible_python_interpreter=/usr/bin/python3
   EOT
 }
+
+# varijable za Ansible iz Terraform konfiguracije (DO-6): podmreze, adrese i DNS
+resource "local_file" "ansible_vars" {
+  filename = "${path.module}/../../ansible/group_vars/all/terraform.yml"
+  content = join("\n", [
+    "# Generisano iz terraform/vm, ne uredjivati rucno",
+    yamlencode({
+      tf_subnets   = { for ime, s in var.segments : ime => s.subnet }
+      tf_ips       = { for ime, s in var.segments : ime => s.ip }
+      dns_zone     = var.dns_zone
+      dns_ip       = var.segments["dns"].ip
+      upstream_dns = var.upstream_dns
+    }),
+  ])
+}

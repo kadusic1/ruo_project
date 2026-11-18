@@ -1,0 +1,6 @@
+---
+# Zajednicke varijable za sve VM-ove i host.
+
+# Cijeli adresni prostor projekta; vatrozid ne dira promet koji ga ne dodiruje
+# (Docker, drugi libvirt, hotspot...). Treba i dns VM-u za allow-query.
+fw_mreza: 10.40.0.0/16

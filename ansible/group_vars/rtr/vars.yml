@@ -5,15 +5,7 @@
 # Uplink se otkriva automatski: sucelje kroz koje host ima zadanu rutu.
 fw_uplink: "{{ ansible_default_ipv4.interface }}"
 
-# Iste podmreze kao variable "segments" u terraform/vm/main.tf.
-fw_segmenti:
-  web: 10.40.1.0/24
-  app: 10.40.2.0/24
-  db: 10.40.3.0/24
-
-# Cijeli adresni prostor projekta; vatrozid ne dira promet koji ga ne dodiruje
-# (Docker, drugi libvirt, hotspot...).
-fw_mreza: 10.40.0.0/16
+fw_segmenti: "{{ tf_subnets }}"
 
 # internet -> segment
 fw_javno:
