@@ -22,6 +22,20 @@ variable "tsig_secret" {
   sensitive   = true
 }
 
+# mora se poklapati s dns_tsig_key_name u roli dns (podrazumijevano ruo-tf)
+variable "tsig_key_name" {
+  description = "naziv TSIG kljuca kojim provider dns mijenja zonu"
+  type        = string
+  default     = "ruo-tf"
+}
+
+# TTL zapisa servisa; isti kao dns_ttl u roli dns
+variable "record_ttl" {
+  description = "TTL zapisa servisa u sekundama"
+  type        = number
+  default     = 300
+}
+
 locals {
   dns_ip = data.terraform_remote_state.vm.outputs.ip["dns"]
 
@@ -38,7 +52,7 @@ locals {
 provider "dns" {
   update {
     server        = local.dns_ip
-    key_name      = "ruo-tf."
+    key_name      = "${var.tsig_key_name}."
     key_algorithm = "hmac-sha256"
     key_secret    = var.tsig_secret
   }
@@ -50,5 +64,5 @@ resource "dns_a_record_set" "service" {
   zone      = local.zone
   name      = each.key
   addresses = [each.value]
-  ttl       = 300
+  ttl       = var.record_ttl
 }

@@ -40,6 +40,7 @@ plan: ## terraform plan: nakon apply mora biti 0 promjena (AO-3)
 > $(TF) plan
 
 config: ## Ansible: konfiguracija VM-ova i vatrozid hosta (trazi sudo lozinku)
+> @test -f ansible/inventory.ini || { echo "Nema inventara (make infra)"; exit 1; }
 > @$(call banner,config)
 > cd ansible && ansible-playbook site.yml $(ANSIBLE_ARGS)
 

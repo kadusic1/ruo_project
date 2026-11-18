@@ -51,15 +51,19 @@ variable "ssh_key_path" {
   default     = "~/.ssh/id_ed25519.pub"
 }
 
-variable "ansible_inventory_file" {
-  description = "putanja do Ansible inventara; prazno = ansible/inventory.ini u repozitoriju"
+variable "ansible_dir" {
+  description = "Ansible direktorij; relativno na ovaj modul ili apsolutno"
   type        = string
-  default     = ""
+  default     = "../../ansible"
 }
 
-# putanja inventara: varijabla ako je zadana, inace ansible/ u repozitoriju
+# putanje do generisanih Ansible fajlova: relativna putanja se veze za modul
+# (radi i pod terraform -chdir), apsolutna i ~ ostaju kakve jesu
 locals {
-  ansible_inventory_file = abspath(coalesce(pathexpand(var.ansible_inventory_file), "${path.module}/../../ansible/inventory.ini"))
+  ansible_dir_input      = pathexpand(var.ansible_dir)
+  ansible_dir            = startswith(local.ansible_dir_input, "/") ? local.ansible_dir_input : abspath("${path.module}/${local.ansible_dir_input}")
+  ansible_inventory_file = "${local.ansible_dir}/inventory.ini"
+  ansible_vars_file      = "${local.ansible_dir}/group_vars/all/terraform.yml"
 }
 
 # jedan segment = jedna libvirt mreza (route mode) + jedna VM
@@ -92,11 +96,18 @@ variable "upstream_dns" {
   default     = ["1.1.1.1", "9.9.9.9"]
 }
 
+# adrese i podmreze VM-a na jednom mjestu: koriste ih outputi, cloud-init i
+# fajl za Ansible, pa se ne mogu razici
+locals {
+  vm_ips     = { for ime, s in var.segments : ime => s.ip }
+  vm_subnets = { for ime, s in var.segments : ime => s.subnet }
+}
+
 # DNS serveri po VM-u: dns VM koristi vanjske, svi ostali nas dns VM
 locals {
   vm_dns = {
     for ime, _ in var.segments : ime => (
-      ime == "dns" ? var.upstream_dns : [var.segments["dns"].ip]
+      ime == "dns" ? var.upstream_dns : [local.vm_ips["dns"]]
     )
   }
 }
@@ -175,7 +186,7 @@ resource "libvirt_domain" "vm" {
 
 # adrese VM-a: { web = "10.40.1.2", app = "...", db = "..." }
 output "ip" {
-  value = { for ime, s in var.segments : ime => s.ip }
+  value = local.vm_ips
 }
 
 # naziv zone: projekat.lab
@@ -187,8 +198,8 @@ output "dns_zone" {
 output "mreze" {
   value = {
     for ime, mreza in libvirt_network.segment : ime => {
-      podmreza = var.segments[ime].subnet
-      gateway  = cidrhost(var.segments[ime].subnet, 1)
+      podmreza = local.vm_subnets[ime]
+      gateway  = cidrhost(local.vm_subnets[ime], 1)
       bridge   = mreza.bridge
     }
   }
@@ -199,16 +210,16 @@ resource "local_file" "inventory" {
   filename = local.ansible_inventory_file
   content  = <<-EOT
     [web]
-    web1 ansible_host=${var.segments["web"].ip}
+    web1 ansible_host=${local.vm_ips["web"]}
 
     [app]
-    app1 ansible_host=${var.segments["app"].ip}
+    app1 ansible_host=${local.vm_ips["app"]}
 
     [db]
-    db1 ansible_host=${var.segments["db"].ip}
+    db1 ansible_host=${local.vm_ips["db"]}
 
     [dns]
-    dns1 ansible_host=${var.segments["dns"].ip}
+    dns1 ansible_host=${local.vm_ips["dns"]}
 
     [rtr]
     host ansible_connection=local
@@ -222,14 +233,14 @@ resource "local_file" "inventory" {
 
 # varijable za Ansible iz Terraform konfiguracije (DO-6): podmreze, adrese i DNS
 resource "local_file" "ansible_vars" {
-  filename = "${path.module}/../../ansible/group_vars/all/terraform.yml"
+  filename = local.ansible_vars_file
   content = join("\n", [
     "# Generisano iz terraform/vm, ne uredjivati rucno",
     yamlencode({
-      tf_subnets   = { for ime, s in var.segments : ime => s.subnet }
-      tf_ips       = { for ime, s in var.segments : ime => s.ip }
+      tf_subnets   = local.vm_subnets
+      tf_ips       = local.vm_ips
       dns_zone     = var.dns_zone
-      dns_ip       = var.segments["dns"].ip
+      dns_ip       = local.vm_ips["dns"]
       upstream_dns = var.upstream_dns
     }),
   ])

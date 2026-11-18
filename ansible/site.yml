@@ -1,5 +1,23 @@
 ---
 # FAZA 2A (DO-6): Terraform generise inventar, Ansible provjerava vezu.
+# Terraform generise i ansible/group_vars/all/terraform.yml (`make infra`); bez
+# njega nema podmreza za vatrozid ni DNS zone, pa se prekida odmah s porukom.
+- name: Provjeri generisane Terraform varijable
+  hosts: rtr
+  gather_facts: false
+
+  tasks:
+    - name: Provjeri da su podmreze, adrese i zona generisane
+      ansible.builtin.assert:
+        that:
+          - tf_subnets is defined
+          - tf_ips is defined
+          - dns_zone is defined
+        fail_msg: >-
+          Nema ansible/group_vars/all/terraform.yml. Pokreni `make infra`
+          (Terraform generise podmreze, adrese i zonu) pa ponovi `make config`.
+        quiet: true
+
 - name: Priprema i provjera veze za sve virtuelne mašine
   hosts: web:app:db:dns
   become: true
