@@ -1,0 +1,19 @@
+// Generisano iz Ansiblea (rola dns). Ne uredjivati rucno.
+options {
+    directory "/var/cache/bind";
+
+    listen-on { {{ dns_ip }}; 127.0.0.1; };
+    listen-on-v6 { none; };
+
+    // rekurzija samo za mrezu projekta i lokalni host; nikad otvoreni resolver
+    recursion yes;
+    allow-recursion { {{ fw_mreza }}; 127.0.0.1; };
+    allow-query { {{ fw_mreza }}; 127.0.0.1; };
+
+    forwarders { {{ upstream_dns | join('; ') }}; };
+    forward only;
+
+    dnssec-validation no;
+
+    allow-transfer { none; };
+};

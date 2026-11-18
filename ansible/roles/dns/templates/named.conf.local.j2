@@ -1,0 +1,9 @@
+// Generisano iz Ansiblea (rola dns). Ne uredjivati rucno.
+include "/etc/bind/ruo-tf.key";
+
+// samo ovu zonu smije mijenjati TSIG kljuc ruo-tf
+zone "{{ dns_zone }}" {
+    type primary;
+    file "{{ dns_zone_file }}";
+    update-policy { grant {{ dns_tsig_key_name }} zonesub ANY; };
+};

@@ -24,6 +24,7 @@ terraform.rc
 .vault-pass.txt
 hosts.ini
 inventory.ini
+ansible/.secrets/
 ansible/group_vars/all/terraform.yml
 
 # ---------- Go ----------

@@ -1,0 +1,6 @@
+---
+# Debianov named.service za reload koristi rndc, a nasa konfiguracija ne
+# ukljucuje rndc.key; SIGHUP radi isto, bez ovisnosti o rndc kanalu.
+- name: reload named
+  ansible.builtin.command: systemctl kill --signal=HUP named
+  changed_when: true

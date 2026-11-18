@@ -17,8 +17,9 @@
     - name: Prikupi činjenice o sistemu (setup)
       ansible.builtin.setup:
 
-# Vatrozid se postavlja zadnji: app i db trebaju internet za apt i povlacenje
-# slika prije nego im se izlaz zatvori.
+# Redoslijed: vatrozid prvo zatvori sve osim propisanih tokova, pa se izlaz
+# privremeno otvori za instalacije (DNS, Docker) i na kraju ponovo zatvori
+# ucitavanjem istih pravila iz datoteke.
 - name: Vatrozid hosta iz podataka
   hosts: rtr
   become: true
@@ -26,3 +27,28 @@
   roles:
     - firewall
 
+- name: Privremeno otvori izlaz na internet za instalacije
+  hosts: rtr
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Dozvoli izlaz segmentima projekta (samo u zivim pravilima)
+      ansible.builtin.command: >-
+        nft insert rule ip ruo forward ip saddr {{ fw_mreza }}
+        oifname "{{ fw_uplink }}" accept
+      changed_when: false
+
+- name: DNS server
+  hosts: dns
+  become: true
+  roles:
+    - dns
+
+- name: Zatvori izlaz na internet
+  hosts: rtr
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Ponovo ucitaj pravila iz datoteke
+      ansible.builtin.command: "nft -f {{ fw_dest }}"
+      changed_when: false

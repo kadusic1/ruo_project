@@ -1,0 +1,89 @@
+---
+- name: Instaliraj BIND
+  ansible.builtin.apt:
+    name: "{{ dns_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# Tajna se generise pri prvom pokretanju i cuva samo na kontrolnoj masini
+# (ansible/.secrets/ je u .gitignore). Isti fajl cita Makefile za Terraform.
+- name: Procitaj ili generisi TSIG tajnu
+  ansible.builtin.set_fact:
+    dns_tsig_secret: >-
+      {{ lookup('ansible.builtin.password',
+                playbook_dir ~ '/.secrets/tsig_ruo-tf length=44 chars=ascii_letters,digits') }}
+  no_log: true
+
+- name: Upisi TSIG kljuc (cipa ga samo BIND)
+  ansible.builtin.copy:
+    content: |
+      key "{{ dns_tsig_key_name }}" {
+          algorithm hmac-sha256;
+          secret "{{ dns_tsig_secret }}";
+      };
+    dest: /etc/bind/ruo-tf.key
+    owner: root
+    group: bind
+    mode: "0640"
+  no_log: true
+  notify: reload named
+
+- name: Napravi direktorij za dinamicne zone
+  ansible.builtin.file:
+    path: "{{ dns_zone_file | dirname }}"
+    state: directory
+    owner: bind
+    group: bind
+    mode: "0775"
+
+- name: Postavi named.conf.options
+  ansible.builtin.template:
+    src: named.conf.options.j2
+    dest: /etc/bind/named.conf.options
+    owner: root
+    group: bind
+    mode: "0644"
+  notify: reload named
+
+- name: Postavi named.conf.local
+  ansible.builtin.template:
+    src: named.conf.local.j2
+    dest: /etc/bind/named.conf.local
+    owner: root
+    group: bind
+    mode: "0644"
+  notify: reload named
+
+# force: false - BIND poslije dodaje zapise i mijenja serial; rola ga ne smije
+# vratiti na pocetno stanje.
+- name: Postavi pocetni zonski fajl (samo ako ne postoji)
+  ansible.builtin.copy:
+    content: |
+      $TTL {{ dns_ttl }}
+      @   IN  SOA ns1.{{ dns_zone }}. admin.{{ dns_zone }}. (
+              1          ; serial
+              3600       ; refresh
+              900        ; retry
+              604800     ; expire
+              300        ; minimum
+              )
+          IN  NS  ns1.{{ dns_zone }}.
+      ns1 IN  A   {{ dns_ip }}
+    dest: "{{ dns_zone_file }}"
+    owner: bind
+    group: bind
+    mode: "0644"
+    force: false
+  notify: reload named
+
+- name: Provjeri BIND konfiguraciju
+  ansible.builtin.command: named-checkconf
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Ukljuci named
+  ansible.builtin.systemd:
+    name: named
+    enabled: true
+    state: started
