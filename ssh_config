@@ -1,0 +1,8 @@
+# Rucni SSH pristup VM-ovima: `ssh -F ssh_config db.projekat.lab`
+# VM-ovi dobijaju nove kljuceve hosta pri svakom ponovnom kreiranju, pa se
+# kljucevi ne pamte (ista politika kao ansible.cfg i tests/lib.sh)
+Host 10.40.*.* *.projekat.lab
+    User student
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
