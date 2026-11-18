@@ -75,12 +75,13 @@ deploy: ## Ansible: build slika na hostu, isporuka i pokretanje aplikacije
 > @$(call banner,deploy)
 > cd ansible && ansible-playbook deploy.yml
 
-test: ## test izolacije, DNS-a, SSH-a i aplikacije
+test: ## test izolacije, DNS-a, SSH-a, aplikacije i trajnosti baze
 > @$(call banner,test)
 > bash tests/isolation.sh
 > bash tests/dns.sh
 > bash tests/ssh.sh
 > bash tests/app.sh
+> bash tests/db.sh
 
 idem: ## dokaz idempotentnosti: plan = 0 (oba modula), drugi config i deploy bez promjena
 > @$(MAKE) --no-print-directory plan
