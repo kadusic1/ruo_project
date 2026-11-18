@@ -15,103 +15,6 @@ provider "libvirt" {
   uri = "qemu:///system"
 }
 
-variable "vm_memory" {
-  description = "memorija VM-a u MiB"
-  type        = number
-  default     = 1024
-}
-
-variable "vm_vcpu" {
-  description = "broj virtuelnih CPU jezgara"
-  type        = number
-  default     = 1
-}
-
-variable "disk_size" {
-  description = "velicina diska VM-a u bajtovima"
-  type        = number
-  default     = 10 * 1024 * 1024 * 1024
-}
-
-variable "base_image_url" {
-  description = "cloud slika od koje nastaju diskovi VM-a"
-  type        = string
-  default     = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-}
-
-variable "pool" {
-  description = "libvirt storage pool za diskove i cloud-init ISO"
-  type        = string
-  default     = "default"
-}
-
-variable "ssh_key_path" {
-  description = "javni SSH kljuc koji se ubacuje u VM"
-  type        = string
-  default     = "~/.ssh/id_ed25519.pub"
-}
-
-variable "ansible_dir" {
-  description = "Ansible direktorij; relativno na ovaj modul ili apsolutno"
-  type        = string
-  default     = "../../ansible"
-}
-
-# putanje do generisanih Ansible fajlova: relativna putanja se veze za modul
-# (radi i pod terraform -chdir), apsolutna i ~ ostaju kakve jesu
-locals {
-  ansible_dir_input      = pathexpand(var.ansible_dir)
-  ansible_dir            = startswith(local.ansible_dir_input, "/") ? local.ansible_dir_input : abspath("${path.module}/${local.ansible_dir_input}")
-  ansible_inventory_file = "${local.ansible_dir}/inventory.ini"
-  ansible_vars_file      = "${local.ansible_dir}/group_vars/all/terraform.yml"
-}
-
-# jedan segment = jedna libvirt mreza (route mode) + jedna VM
-# gateway svake mreze je .1 (postavlja ga libvirt), a VM dobija staticku adresu
-variable "segments" {
-  type = map(object({
-    subnet = string
-    ip     = string
-    mac    = string
-  }))
-  default = {
-    web = { subnet = "10.40.1.0/24", ip = "10.40.1.2", mac = "52:54:00:40:01:02" }
-    app = { subnet = "10.40.2.0/24", ip = "10.40.2.2", mac = "52:54:00:40:02:02" }
-    db  = { subnet = "10.40.3.0/24", ip = "10.40.3.2", mac = "52:54:00:40:03:02" }
-    dns = { subnet = "10.40.4.0/24", ip = "10.40.4.2", mac = "52:54:00:40:04:02" }
-  }
-}
-
-# zona koju posluzuje dns VM; koristi je i terraform/dns za zapise servisa
-variable "dns_zone" {
-  description = "naziv DNS zone koju posluzuje dns VM"
-  type        = string
-  default     = "projekat.lab"
-}
-
-# dns VM prosljedjuje upite za vanjska imena na ove servere
-variable "upstream_dns" {
-  description = "vanjski DNS serveri na koje dns VM prosljedjuje upite"
-  type        = list(string)
-  default     = ["1.1.1.1", "9.9.9.9"]
-}
-
-# adrese i podmreze VM-a na jednom mjestu: koriste ih outputi, cloud-init i
-# fajl za Ansible, pa se ne mogu razici
-locals {
-  vm_ips     = { for ime, s in var.segments : ime => s.ip }
-  vm_subnets = { for ime, s in var.segments : ime => s.subnet }
-}
-
-# DNS serveri po VM-u: dns VM koristi vanjske, svi ostali nas dns VM
-locals {
-  vm_dns = {
-    for ime, _ in var.segments : ime => (
-      ime == "dns" ? var.upstream_dns : [local.vm_ips["dns"]]
-    )
-  }
-}
-
 # mreza svakog segmenta je u route modu: libvirt ne radi NAT, a host
 # (bridge sa adresom .1) usmjerava promet izmedju segmenata
 resource "libvirt_network" "segment" {
@@ -181,27 +84,6 @@ resource "libvirt_domain" "vm" {
     type        = "pty"
     target_type = "serial"
     target_port = "0"
-  }
-}
-
-# adrese VM-a: { web = "10.40.1.2", app = "...", db = "..." }
-output "ip" {
-  value = local.vm_ips
-}
-
-# naziv zone: projekat.lab
-output "dns_zone" {
-  value = var.dns_zone
-}
-
-# mreza svakog segmenta: podmreza, gateway (host) i libvirt bridge
-output "mreze" {
-  value = {
-    for ime, mreza in libvirt_network.segment : ime => {
-      podmreza = local.vm_subnets[ime]
-      gateway  = cidrhost(local.vm_subnets[ime], 1)
-      bridge   = mreza.bridge
-    }
   }
 }
 
