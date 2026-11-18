@@ -50,3 +50,8 @@ docs
 projekt.pdf
 CLAUDE.md
 
+
+# ---------- Packer ----------
+packer/output/
+packer_cache/
+*.qcow2

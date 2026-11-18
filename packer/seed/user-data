@@ -1,0 +1,5 @@
+#cloud-config
+# samo za Packer build: lozinka se zakljucava prije snimanja slike
+password: packer
+chpasswd: { expire: false }
+ssh_pwauth: true
