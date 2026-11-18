@@ -58,18 +58,8 @@
 # force: false - BIND poslije dodaje zapise i mijenja serial; rola ga ne smije
 # vratiti na pocetno stanje.
 - name: Postavi pocetni zonski fajl (samo ako ne postoji)
-  ansible.builtin.copy:
-    content: |
-      $TTL {{ dns_ttl }}
-      @   IN  SOA ns1.{{ dns_zone }}. admin.{{ dns_zone }}. (
-              1          ; serial
-              3600       ; refresh
-              900        ; retry
-              604800     ; expire
-              300        ; minimum
-              )
-          IN  NS  ns1.{{ dns_zone }}.
-      ns1 IN  A   {{ dns_ip }}
+  ansible.builtin.template:
+    src: db.zone.j2
     dest: "{{ dns_zone_file }}"
     owner: bind
     group: bind

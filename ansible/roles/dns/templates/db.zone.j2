@@ -1,0 +1,10 @@
+$TTL {{ dns_ttl }}
+@   IN  SOA ns1.{{ dns_zone }}. admin.{{ dns_zone }}. (
+        1          ; serial
+        3600       ; refresh
+        900        ; retry
+        604800     ; expire
+        300        ; minimum
+        )
+    IN  NS  ns1.{{ dns_zone }}.
+ns1 IN  A   {{ dns_ip }}
