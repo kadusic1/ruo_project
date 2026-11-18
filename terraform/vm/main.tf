@@ -74,6 +74,30 @@ variable "segments" {
     web = { subnet = "10.40.1.0/24", ip = "10.40.1.2", mac = "52:54:00:40:01:02" }
     app = { subnet = "10.40.2.0/24", ip = "10.40.2.2", mac = "52:54:00:40:02:02" }
     db  = { subnet = "10.40.3.0/24", ip = "10.40.3.2", mac = "52:54:00:40:03:02" }
+    dns = { subnet = "10.40.4.0/24", ip = "10.40.4.2", mac = "52:54:00:40:04:02" }
+  }
+}
+
+# zona koju posluzuje dns VM; koristi je i terraform/dns za zapise servisa
+variable "dns_zone" {
+  description = "naziv DNS zone koju posluzuje dns VM"
+  type        = string
+  default     = "projekat.lab"
+}
+
+# dns VM prosljedjuje upite za vanjska imena na ove servere
+variable "upstream_dns" {
+  description = "vanjski DNS serveri na koje dns VM prosljedjuje upite"
+  type        = list(string)
+  default     = ["1.1.1.1", "9.9.9.9"]
+}
+
+# DNS serveri po VM-u: dns VM koristi vanjske, svi ostali nas dns VM
+locals {
+  vm_dns = {
+    for ime, _ in var.segments : ime => (
+      ime == "dns" ? var.upstream_dns : [var.segments["dns"].ip]
+    )
   }
 }
 
@@ -122,6 +146,7 @@ resource "libvirt_cloudinit_disk" "init" {
     mac     = each.value.mac
     address = "${each.value.ip}/24"
     gateway = cidrhost(each.value.subnet, 1)
+    dns     = join(", ", local.vm_dns[each.key])
   })
 }
 
@@ -153,6 +178,11 @@ output "ip" {
   value = { for ime, s in var.segments : ime => s.ip }
 }
 
+# naziv zone: projekat.lab
+output "dns_zone" {
+  value = var.dns_zone
+}
+
 # mreza svakog segmenta: podmreza, gateway (host) i libvirt bridge
 output "mreze" {
   value = {
@@ -176,6 +206,9 @@ resource "local_file" "inventory" {
 
     [db]
     db1 ansible_host=${var.segments["db"].ip}
+
+    [dns]
+    dns1 ansible_host=${var.segments["dns"].ip}
 
     [rtr]
     host ansible_connection=local

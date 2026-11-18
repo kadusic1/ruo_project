@@ -9,3 +9,5 @@ ethernets:
     routes:
       - to: default
         via: ${gateway}
+    nameservers:
+      addresses: [${dns}]
