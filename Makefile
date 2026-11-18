@@ -11,11 +11,12 @@ SHELL := /bin/bash
 ANSIBLE_ARGS ?= -K
 
 TF := terraform -chdir=terraform/vm
+TFD := terraform -chdir=terraform/dns
 
 banner = printf '\n\033[1;36m== %s\033[0m\n' '$(1)'
 need = command -v $(1) >/dev/null || { echo "Nedostaje '$(1)'"; exit 1; }
 
-.PHONY: help check infra plan config test all destroy fw-clean
+.PHONY: help check infra plan config dns test all destroy fw-clean
 
 ##@ Pomoc
 help: ## ovaj popis
@@ -42,15 +43,24 @@ config: ## Ansible: konfiguracija VM-ova i vatrozid hosta (trazi sudo lozinku)
 > @$(call banner,config)
 > cd ansible && ansible-playbook site.yml $(ANSIBLE_ARGS)
 
+dns: ## DNS zapisi servisa preko RFC 2136 (trazi TSIG kljuc iz make config)
+> @test -s ansible/.secrets/tsig_ruo-tf || { echo "Nema TSIG kljuca (prvo make config)"; exit 1; }
+> @$(call banner,dns)
+> $(TFD) init -input=false
+> TF_VAR_tsig_secret="$$(cat ansible/.secrets/tsig_ruo-tf)" $(TFD) apply -auto-approve
+
 test: ## test izolacije (web -> db mora pasti)
 > @$(call banner,test)
 > bash tests/isolation.sh
 
-all: infra config ## od praznog sistema do konfigurisanih VM-ova (kasnije: dns, deploy)
+all: infra config dns ## od praznog sistema do konfigurisanih VM-ova i DNS zapisa
 
-destroy: ## uklanja VM-ove, mreze i vatrozid na hostu
+destroy: ## uklanja DNS zapise, VM-ove, mreze i vatrozid na hostu
+> -$(TFD) init -input=false
+> -TF_VAR_tsig_secret="$$(cat ansible/.secrets/tsig_ruo-tf 2>/dev/null || true)" $(TFD) destroy -auto-approve
 > $(TF) init -input=false
 > $(TF) destroy -auto-approve
+> rm -rf terraform/dns/terraform.tfstate* ansible/.secrets
 > $(MAKE) --no-print-directory fw-clean
 
 fw-clean: ## uklanja pravila i systemd unit vatrozida s hosta
