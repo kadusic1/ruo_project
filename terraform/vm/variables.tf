@@ -17,9 +17,11 @@ variable "disk_size" {
 }
 
 variable "base_image_url" {
-  description = "cloud slika od koje nastaju diskovi VM-a"
+  description = "cloud slika od koje nastaju diskovi VM-a (datirani release, ne `current`)"
   type        = string
-  default     = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+  # pinovano radi ponovljivosti; sha256 iz .../noble/20261017/SHA256SUMS:
+  # 04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94
+  default = "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img"
 }
 
 variable "pool" {
@@ -61,6 +63,14 @@ variable "dns_zone" {
   description = "naziv DNS zone koju posluzuje dns VM"
   type        = string
   default     = "projekat.lab"
+}
+
+# TTL zone i zapisa: jedini izvor istine, koriste ga Ansible (rola dns) i
+# terraform/dns preko izlaza ovog modula
+variable "dns_ttl" {
+  description = "TTL zone i zapisa servisa u sekundama"
+  type        = number
+  default     = 300
 }
 
 # dns VM prosljedjuje upite za vanjska imena na ove servere

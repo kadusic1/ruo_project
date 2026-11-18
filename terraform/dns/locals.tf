@@ -6,6 +6,13 @@ locals {
   zone = "${trimsuffix(data.terraform_remote_state.vm.outputs.dns_zone, ".")}."
 }
 
+# TTL dolazi iz terraform/vm (isti kao u roli dns); naziv TSIG kljuca je
+# konstanta koja se poklapa s dns_tsig_key_name u roli dns
+locals {
+  record_ttl    = data.terraform_remote_state.vm.outputs.dns_ttl
+  tsig_key_name = "ruo-tf"
+}
+
 # adrese servisa u zoni: ime -> adresa iz terraform/vm stanja
 locals {
   service_ips = {

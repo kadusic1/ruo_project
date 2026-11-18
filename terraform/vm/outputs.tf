@@ -8,6 +8,11 @@ output "dns_zone" {
   value = var.dns_zone
 }
 
+# TTL zapisa za terraform/dns (isti kao u roli dns)
+output "dns_ttl" {
+  value = var.dns_ttl
+}
+
 # mreza svakog segmenta: podmreza, gateway (host) i libvirt bridge
 output "mreze" {
   value = {

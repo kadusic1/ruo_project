@@ -124,6 +124,7 @@ resource "local_file" "ansible_vars" {
       dns_zone     = var.dns_zone
       dns_ip       = local.vm_ips["dns"]
       upstream_dns = var.upstream_dns
+      dns_ttl      = var.dns_ttl
     }),
   ])
 }

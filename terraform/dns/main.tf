@@ -19,7 +19,7 @@ data "terraform_remote_state" "vm" {
 provider "dns" {
   update {
     server        = local.dns_ip
-    key_name      = "${var.tsig_key_name}."
+    key_name      = "${local.tsig_key_name}."
     key_algorithm = "hmac-sha256"
     key_secret    = var.tsig_secret
   }
@@ -31,5 +31,5 @@ resource "dns_a_record_set" "service" {
   zone      = local.zone
   name      = each.key
   addresses = [each.value]
-  ttl       = var.record_ttl
+  ttl       = local.record_ttl
 }

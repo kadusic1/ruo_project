@@ -1,5 +1,7 @@
 #cloud-config
 hostname: ${hostname}
+# prijava lozinkom je iskljucena i u sshd-u, ne samo zakljucavanjem naloga
+ssh_pwauth: false
 users:
   - name: student
     sudo: ALL=(ALL) NOPASSWD:ALL
