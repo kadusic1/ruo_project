@@ -8,6 +8,8 @@ app_db_user: invoices
 # komponente se adresiraju samo DNS imenima zone projekta (AO-7)
 app_db_host: "db.{{ dns_zone }}"
 app_backend_url: "http://app.{{ dns_zone }}:8080"
+# CORS: backend dozvoljava samo origin frontenda (preglednik salje origin bez porta 80)
+app_frontend_origin: "http://web.{{ dns_zone }}"
 
 # slika ovog sloja (app_images je u group_vars/all, dijeli ga deploy.yml)
 app_image: "{{ app_images[app_profile] }}"

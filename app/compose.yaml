@@ -37,7 +37,6 @@ services:
     env_file: [*env]
     environment:
       PORT: "8080"
-      FRONTEND_ORIGIN: "*"
     ports:
       - "8080:8080"
 
