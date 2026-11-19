@@ -19,7 +19,7 @@ TSIG := TF_VAR_tsig_secret="$$(cat ansible/.secrets/tsig_ruo-tf 2>/dev/null || t
 banner = printf '\n\033[1;36m== %s\033[0m\n' '$(1)'
 need = command -v $(1) >/dev/null || { echo "Nedostaje '$(1)'"; exit 1; }
 
-.PHONY: help setup check image clean-image infra config dns deploy test all destroy
+.PHONY: help setup check image clean-image infra config dns deploy test drift all destroy
 
 ##@ Pomoc
 help: ## ovaj popis
@@ -78,6 +78,14 @@ test: ## test izolacije, DNS-a, SSH-a, aplikacije i trajnosti baze
 > bash tests/ssh.sh
 > bash tests/app.sh
 > bash tests/db.sh
+
+# oba modula se uvijek provjere; izlaz 0 = bez drifta, 2 = drift, 1 = greska
+drift: ## terraform plan bez izmjena (terraform/vm i terraform/dns); izlaz 2 = drift
+> @$(call banner,drift)
+> @rc=0; \
+  $(TF) plan -detailed-exitcode -input=false || rc=$$?; \
+  $(TSIG) $(TFD) plan -detailed-exitcode -input=false || { r=$$?; [ $$rc -eq 1 ] || rc=$$r; }; \
+  exit $$rc
 
 all: infra config dns deploy test ## od praznog sistema do aplikacije koja radi
 
