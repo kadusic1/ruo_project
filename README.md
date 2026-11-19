@@ -321,9 +321,10 @@ DNS provjere (zona projekat.lab, server 10.40.4.2)
   dig @10.40.4.2 web.projekat.lab                      ok
   dig @10.40.4.2 app.projekat.lab                      ok
   dig @10.40.4.2 db.projekat.lab                       ok
+  dig @10.40.4.2 dns.projekat.lab                      ok
   web: getent hosts db.projekat.lab                    ok
   host: getent hosts web.projekat.lab                  ok
-  dig @10.40.4.2 archive.ubuntu.com (REFUSED)         ok
+  dig @10.40.4.2 archive.ubuntu.com (REFUSED)          ok
   dig @10.40.4.2 nepostoji.projekat.lab (NXDOMAIN)     ok
 
 sve DNS provjere odgovaraju ocekivanjima
@@ -348,7 +349,7 @@ Provjere aplikacije (http://web.projekat.lab)
 
 sve provjere aplikacije odgovaraju ocekivanjima
 bash tests/db.sh
-Trajnost baze (faktura AO10-TEST-1795046379)
+Trajnost baze (faktura AO10-TEST-1795112073)
   POST http://web.projekat.lab/api/invoices            ok
   faktura postoji prije rekreiranja                    ok
   db: kontejner ponovo kreiran (novi ID)               ok
@@ -388,7 +389,7 @@ PLAY RECAP *********************************************************************
 app1                       : ok=9    changed=0    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0
 db1                        : ok=11   changed=0    unreachable=0    failed=0    skipped=6    rescued=0    ignored=0
 host                       : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
-web1                       : ok=9    changed=0    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0
+web1                       : ok=8    changed=0    unreachable=0    failed=0    skipped=9    rescued=0    ignored=0
 ```
 
 Drugo izvršavanje `make config`:
