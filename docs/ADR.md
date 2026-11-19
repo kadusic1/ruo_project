@@ -33,21 +33,23 @@ nastaje Packerom, VM-ove i DNS zapise pravi Terraform, a konfiguraciju i isporuk
 
 | ID   | Pitanje                          | Izabrana opcija |
 | ----- | --------------- | ------------------------------------------------------------------ |
-| DO-1 | Aplikacija i tehnologije         | vlastiti invoice tracker: Next.js (statički export) + nginx, Go, MariaDB 11.4 |
-| DO-2 | Broj VM-ova i raspored           | opcija B: 4 VM-a (web, app, db, dns), svaki u svojoj libvirt mreži u `route` modu; host usmjerava i filtrira (nftables); DNS na zasebnom VM-u |
-| DO-3 | Plan adresiranja                 | `10.40.N.0/29` po segmentu (1 web, 2 app, 3 db, 4 dns), host `.1`, VM `.2`, statičke adrese iz cloud-init-a, bez DHCP-a |
-| DO-4 | Bazna slika VM-a                 | vlastita Packer slika (pinovana Ubuntu 24.04 cloud slika + docker + bind9) + cloud-init za podešavanje po VM-u |
-| DO-5 | Gradnja i distribucija slika     | multi-stage Dockerfile, build na hostu, prenos `docker save`/`load` preko Ansiblea, samo kad se ID slike razlikuje |
-| DO-6 | Adrese VM-ova za Ansible         | inventar i varijable generiše Terraform (`local_file`) iz jedne varijable `segments` |
-| DO-7 | Organizacija rola i varijabli    | role po funkciji (`firewall`, `dns`, `host_dns`, `app`); jedna rola `app` za sva tri sloja, sloj se bira kroz `group_vars/<grupa>` |
-| DO-8 | DNS zona                         | `projekat.lab`, TTL 300, jedan primarni BIND, bez PTR, sekundarnog servera i round-robina; zapisi servisa iz Terraforma, TSIG samo za ovu zonu |
-| DO-9 | Upravljanje tajnama              | generisanje pri prvom pokretanju (Ansible `password` lookup) u `ansible/.secrets/` van Gita; `.env` po sloju (0600) |
+| DO-1 | Koja aplikacija i koje tehnologije za svaki sloj? | vlastiti invoice tracker: Next.js (statički export) + nginx, Go, MariaDB 11.4 |
+| DO-2 | Koliko VM-ova i kako su komponente raspoređene na njih? | opcija B: 4 VM-a (web, app, db, dns), svaki u svojoj libvirt mreži u `route` modu; host usmjerava i filtrira (nftables); DNS na zasebnom VM-u |
+| DO-3 | Kakav je plan adresiranja? | `10.40.N.0/29` po segmentu (1 web, 2 app, 3 db, 4 dns), host `.1`, VM `.2`, statičke adrese iz cloud-init-a, bez DHCP-a |
+| DO-4 | Odakle dolazi bazna slika VM-a? | vlastita Packer slika (pinovana Ubuntu 24.04 cloud slika + docker + bind9) + cloud-init za podešavanje po VM-u |
+| DO-5 | Kako se grade i distribuiraju slike kontejnera? | multi-stage Dockerfile, build na hostu, prenos `docker save`/`load` preko Ansiblea, samo kad se ID slike razlikuje |
+| DO-6 | Kako Ansible dobija adrese VM-ova koje je kreirao Terraform? | inventar i varijable generiše Terraform (`local_file`) iz jedne varijable `segments` |
+| DO-7 | Kako su organizovane Ansible role i varijable? | role po funkciji (`firewall`, `dns`, `host_dns`, `app`); jedna rola `app` za sva tri sloja, sloj se bira kroz `group_vars/<grupa>` |
+| DO-8 | Kako je projektovana DNS zona? | `projekat.lab`, TTL 300, jedan primarni BIND, bez PTR, sekundarnog servera i round-robina; zapisi servisa iz Terraforma, TSIG samo za ovu zonu |
+| DO-9 | Kako se upravlja tajnama? | generisanje pri prvom pokretanju (Ansible `password` lookup) u `ansible/.secrets/` van Gita; `.env` po sloju (0600) |
 
-# DO-1: Aplikacija i tehnologije po slojevima
+# DO-1: Vlastiti invoice tracker: Next.js + nginx, Go, MariaDB
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-1** (troslojna aplikacija, svaki sloj u svom kontejneru, tok frontend → backend → baza); **AO-7** (vlastita autoritativna BIND zona, komponente se adresiraju samo DNS imenima); **AO-10** (podaci baze preživljavaju ponovno kreiranje kontejnera).
 
 Treba troslojna aplikacija čiji je svaki sloj zaseban kontejner, a tok zahtjeva je strogo
 frontend → backend → baza. Aplikacija se ne ocjenjuje, ali mora biti dovoljno mala da se objasni
@@ -88,11 +90,13 @@ Opcija 2, vlastiti **invoice tracker**:
 - Gubi se: aplikacija je minimalna (nema autentikacije, izmjene ni brisanja faktura). To je
   prihvatljivo jer se ocjenjuje infrastruktura.
 
-# DO-2: Broj VM-ova i raspored komponenti
+# DO-2: Četiri VM-a u zasebnim route mrežama, DNS na vlastitom VM-u
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-6** (svaki sloj u svom segmentu s vlastitom podmrežom, izvana samo frontend, frontend bez puta do baze, baza bez objavljenog porta); **AO-7** (vlastita autoritativna BIND zona, komponente se adresiraju samo DNS imenima); **AO-2** (sve je opisano kodom, podizanje i uklanjanje bez ručnih koraka).
 
 Slojevi moraju biti mrežno izolovani: svaki u svom segmentu s vlastitom podmrežom, izvana dostupan
 samo frontend, frontend bez mrežnog puta do baze, a baza bez objavljenog porta. Treba odlučiti
@@ -131,11 +135,13 @@ nftables `ip ruo`. Politika je zapisana kao podaci u `ansible/group_vars/rtr/var
   `make destroy` traže sudo. Vatrozid je jedna tačka kontrole (nema dodatnog vatrozida unutar VM-ova).
   Kod je složeniji (prenos slika bez interneta, split DNS na hostu).
 
-# DO-3: Plan adresiranja
+# DO-3: Statičke adrese, /29 po segmentu unutar 10.40.0.0/21
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-6** (svaki sloj u svom segmentu s vlastitom podmrežom, izvana samo frontend, frontend bez puta do baze, baza bez objavljenog porta); **AO-3** (VM-ove kreira Terraform, parametri su varijable, adrese su outputi).
 
 Svaki segment treba vlastitu podmrežu. Adrese moraju biti poznate unaprijed: od njih zavise DNS
 zapisi (Terraform), pravila vatrozida (Ansible) i inventar. Opseg se ne smije sudarati s mrežama
@@ -190,11 +196,13 @@ postavlja adresu, zadanu rutu preko `.1` i resolver (dns VM, i za sam dns VM).
 - Gubi se: promjena adrese traži ponovno kreiranje VM-a (cloud-init se primjenjuje pri prvom
   podizanju), a dodavanje segmenta znači novi unos u `segments` i nova pravila vatrozida.
 
-# DO-4: Bazna slika VM-a
+# DO-4: Vlastita Packer slika uz cloud-init
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-4** (početnu konfiguraciju radi cloud-init, SSH ključ, prijava lozinkom isključena); **AO-2** (sve je opisano kodom, podizanje i uklanjanje bez ručnih koraka); **AO-6** (svaki sloj u svom segmentu s vlastitom podmrežom, izvana samo frontend, frontend bez puta do baze, baza bez objavljenog porta).
 
 VM-ovi trebaju Docker (svi slojevi) i BIND (dns VM). Zbog DO-2, app i db nemaju izlaz na internet,
 a dns smije samo na port 53. Paketi se zato ne mogu instalirati pri konfiguraciji. Početnu
@@ -231,11 +239,13 @@ Cloud-init (`terraform/vm/cloud-init/`) zatim postavlja hostname, korisnika `stu
 - Gubi se: sigurnosne zakrpe stižu tek novim buildom (nova datirana slika u kodu). `make` gleda mtime,
   pa git operacije koje diraju `packer/` mogu izazvati ponovni build bez stvarne promjene.
 
-# DO-5: Gradnja i distribucija slika kontejnera
+# DO-5: Multi-stage build na hostu i prenos sa docker save/load
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-1** (troslojna aplikacija, svaki sloj u svom kontejneru, tok frontend → backend → baza); **AO-5** (konfiguracija Ansible rolama, playbook je idempotentan); **AO-6** (svaki sloj u svom segmentu s vlastitom podmrežom, izvana samo frontend, frontend bez puta do baze, baza bez objavljenog porta).
 
 Slike backenda i frontenda treba izgraditi, a sve tri slike (i `mariadb`) dostaviti VM-ovima. App i
 db nemaju internet (DO-2), pa ne mogu ni graditi (preuzimanje Go modula i npm paketa) ni povlačiti
@@ -269,11 +279,13 @@ ID slike na hostu i na VM-u. Samo ako se razlikuju, uradi `docker save` na hostu
 - Gubi se: nema historije verzija (tag je stalno `1.0`, a razliku nosi ID). Svaka promjena koda
   znači prenos cijele arhive te slike. Host mora imati Docker.
 
-# DO-6: Kako Ansible dobija adrese VM-ova
+# DO-6: Inventar i varijable generiše Terraform
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-3** (VM-ove kreira Terraform, parametri su varijable, adrese su outputi); **AO-5** (konfiguracija Ansible rolama, playbook je idempotentan).
 
 VM-ove i adrese pravi Terraform, a Ansible ih mora znati. Ansible treba i podmreže (za vatrozid),
 zonu, TTL i adresu DNS servera. Isti podatak ne smije biti upisan na dva mjesta, jer se tada može razići.
@@ -306,11 +318,13 @@ state-a `terraform/vm` (`terraform_remote_state`), a testovi čitaju isti invent
   negdje na pola.
 - Gubi se: Ansible vidi stanje iz posljednjeg `apply`. Ako se fajlovi obrišu, treba ponovo `make infra`.
 
-# DO-7: Organizacija Ansible rola i varijabli
+# DO-7: Role po funkciji, sloj se bira kroz group_vars
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-5** (konfiguracija Ansible rolama, playbook je idempotentan).
 
 Konfiguracija mora biti u rolama i idempotentna. Ciljevi su različiti: host (vatrozid, DNS hosta),
 dns VM (BIND) i tri VM-a aplikacije koji rade isto (slika, compose, `.env`), samo za drugi sloj.
@@ -357,11 +371,13 @@ Varijable:
 - Gubi se: rola `app` ima uslove po sloju (`when: app_profile == 'db'`), pa je manje "čista" od tri
   odvojene role.
 
-# DO-8: Projektovanje DNS zone
+# DO-8: Privatna zona projekat.lab, TTL 300, jedan primarni BIND
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-7** (vlastita autoritativna BIND zona, komponente se adresiraju samo DNS imenima); **AO-8** (DNS zapisi su Terraform resursi (RFC 2136), TSIG ključ mijenja samo zonu projekta).
 
 Projekat treba vlastitu autoritativnu zonu (BIND), a komponente se adresiraju samo imenima. Zapisi
 servisa su Terraform resursi (provider `hashicorp/dns`, RFC 2136), a TSIG ključ smije mijenjati samo
@@ -379,7 +395,7 @@ zonu projekta. Na odbrani se traži novi zapis ili drift, pa promjene moraju sti
 - **TTL 300 s**, s jednim izvorom: `dns_ttl` u `terraform/vm` (koriste ga rola `dns` za zonu i
   `terraform/dns` za zapise).
 - Ansible pravi samo početnu zonu (SOA, NS, `ns1`) i to samo ako fajl ne postoji. Zapise servisa
-  `web`, `app` i `db` pravi Terraform (`dns_a_record_set`, adrese iz state-a `terraform/vm`).
+  `web`, `app`, `db` i `dns` pravi Terraform (`dns_a_record_set`, adrese iz state-a `terraform/vm`).
 - TSIG `ruo-tf` (hmac-sha256) sa `update-policy { grant ruo-tf zonesub ANY; }`, samo za ovu zonu.
 - Samo autoritativni server (`recursion no`), upiti samo iz `10.40.0.0/21` i s localhosta, `allow-transfer none`.
 - Bez PTR zapisa, sekundarnog servera i round-robina. Host razrješava zonu preko split DNS-a (`resolvectl`).
@@ -403,11 +419,13 @@ zonu projekta. Na odbrani se traži novi zapis ili drift, pa promjene moraju sti
 - Gubi se: jedan DNS server je jedna tačka otkaza. Kad dns VM ne radi, novi nazivi se ne razrješavaju
   (postojeće veze rade dalje).
 
-# DO-9: Upravljanje tajnama
+# DO-9: Tajne se generišu pri prvom pokretanju, van Gita
 
 Status: prihvaćeno
 
 ## Kontekst
+
+**Ograničavaju:** **AO-9** (tajne nikad nisu u Gitu u čistom obliku); **AO-2** (sve je opisano kodom, podizanje i uklanjanje bez ručnih koraka).
 
 Tajne su lozinke baze, TSIG ključ i SSH ključevi. Nikad ne smiju biti u Gitu u čistom obliku, a
 tajna koja je jednom ušla u historiju smatra se otkrivenom. Lozinke baze štite fakture, najosjetljiviji
