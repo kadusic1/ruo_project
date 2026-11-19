@@ -117,8 +117,8 @@ proba web dns "$DNS" 22   blokirano      # web -> dns: SSH
 proba dns db  "$DB"  3306 blokirano      # dns ne doseze bazu
 proba app internet "$INT_IP" "$INT_PORT" blokirano  # app nema izlaz
 proba db  internet "$INT_IP" "$INT_PORT" blokirano  # db nema izlaz
-proba dns internet "$INT_IP" "$INT_PORT" blokirano  # dns samo na port 53
-proba web internet "$INT_IP" "$INT_PORT" dozvoljeno # samo web ima opci izlaz
+proba dns internet "$INT_IP" "$INT_PORT" blokirano  # dns nema izlaz
+proba web internet "$INT_IP" "$INT_PORT" blokirano  # web nema izlaz
 
 echo
 if [ "$RAZLIKA" -eq 0 ]; then

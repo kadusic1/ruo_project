@@ -26,22 +26,8 @@ table ip ruo {
     # {{ r.od }} -> {{ r.do }}
     ip saddr {{ fw_segmenti[r.od] }} ip daddr {{ fw_segmenti[r.do] }} {{ r.proto | default('tcp') }} dport { {{ r.portovi | join(', ') }} } accept
 {% endfor %}
-{% for s in fw_izlaz %}
-    # izlaz: {{ s }} -> internet
-    ip saddr {{ fw_segmenti[s] }} oifname "{{ fw_uplink }}" accept
-{% endfor %}
-{% for r in fw_izlaz_portovi %}
-    # izlaz: {{ r.od }} -> internet, samo navedeni portovi
-    ip saddr {{ fw_segmenti[r.od] }} oifname "{{ fw_uplink }}" {{ r.proto | default('tcp') }} dport { {{ r.portovi | join(', ') }} } accept
-{% endfor %}
 
     limit rate 5/minute log prefix "ruo-drop: "
     drop
-  }
-
-  # NAT: segmenti izlaze prema uplinku s adresom hosta
-  chain postrouting {
-    type nat hook postrouting priority srcnat;
-    oifname "{{ fw_uplink }}" ip saddr {{ fw_mreza }} counter masquerade
   }
 }

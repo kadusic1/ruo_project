@@ -23,12 +23,4 @@ fw_pravila:
   - { od: db, do: dns, proto: udp, portovi: [53] }
   - { od: db, do: dns, proto: tcp, portovi: [53] }
 
-# segmenti kojima je dozvoljen izlaz na internet (samo web)
-fw_izlaz: [web]
-
-# izlaz na internet ogranicen na portove: dns smije samo na 53
-fw_izlaz_portovi:
-  - { od: dns, proto: udp, portovi: [53] }
-  - { od: dns, proto: tcp, portovi: [53] }
-
 fw_dest: /etc/nftables.d/ruo.nft

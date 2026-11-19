@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Provjera vlastitog DNS-a (AO-7, AO-8): zapisi servisa koje dodaje Terraform
-# preko RFC 2136, prosljedjivanje vanjskih imena i NXDOMAIN za nepostojeca
+# preko RFC 2136, odbijanje vanjskih imena i NXDOMAIN za nepostojeca
 # imena. Adrese se citaju iz Terraform izlaza, a ako njih nema iz generisanih
 # Ansible varijabli (ansible/group_vars/all/terraform.yml).
 set -uo pipefail
@@ -49,9 +49,8 @@ fi
 
 # --- SSH podaci (lib.sh) ---
 WEB="$(group_host web)"
-APP="$(group_host app)"
-if [ -z "$WEB" ] || [ -z "$APP" ]; then
-  echo "GRESKA: inventar nema adrese za web i app" >&2
+if [ -z "$WEB" ]; then
+  echo "GRESKA: inventar nema adresu za web" >&2
   exit 2
 fi
 
@@ -72,14 +71,10 @@ rezultat "web: getent hosts db.$ZONE" "$DB_IP" \
 rezultat "host: getent hosts web.$ZONE" "$WEB_IP" \
   "$(getent hosts "web.$ZONE" | awk '{ print $1; exit }')"
 
-# prosljedjivanje vanjskih imena preko forwarders
-VANJSKO="$(ssh_to "$APP" "getent hosts archive.ubuntu.com" 2>/dev/null | awk '{ print $1; exit }')"
-if [ -n "$VANJSKO" ]; then
-  printf '  %-52s ok (%s)\n' "app: getent hosts archive.ubuntu.com" "$VANJSKO"
-else
-  printf '  %-52s RAZLIKA (nema odgovora)\n' "app: getent hosts archive.ubuntu.com"
-  RAZLIKA=$((RAZLIKA + 1))
-fi
+# vanjska imena se ne razrjesavaju (nema rekurzije): BIND odbija upit
+rezultat "dig @$DNS_IP archive.ubuntu.com (REFUSED)" "REFUSED" \
+  "$(dig +time=2 +tries=1 "@$DNS_IP" archive.ubuntu.com +noall +comments |
+     sed -n 's/.*status: \([A-Z]*\).*/\1/p')"
 
 # nepostojece ime mora dati NXDOMAIN, ne SERVFAIL ili prazan odgovor
 rezultat "dig @$DNS_IP nepostoji.$ZONE (NXDOMAIN)" "NXDOMAIN" \

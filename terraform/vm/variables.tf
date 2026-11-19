@@ -70,10 +70,3 @@ variable "dns_ttl" {
   type        = number
   default     = 300
 }
-
-# dns VM prosljedjuje upite za vanjska imena na ove servere
-variable "upstream_dns" {
-  description = "vanjski DNS serveri na koje dns VM prosljedjuje upite"
-  type        = list(string)
-  default     = ["1.1.1.1", "9.9.9.9"]
-}

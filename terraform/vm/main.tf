@@ -61,7 +61,7 @@ resource "libvirt_cloudinit_disk" "init" {
     mac     = each.value.mac
     address = "${each.value.ip}/${split("/", each.value.subnet)[1]}"
     gateway = cidrhost(each.value.subnet, 1)
-    dns     = join(", ", local.vm_dns[each.key])
+    dns     = local.vm_ips["dns"]
   })
 }
 
@@ -124,7 +124,6 @@ resource "local_file" "ansible_vars" {
       tf_ips       = local.vm_ips
       dns_zone     = var.dns_zone
       dns_ip       = local.vm_ips["dns"]
-      upstream_dns = var.upstream_dns
       dns_ttl      = var.dns_ttl
     }),
   ])

@@ -5,13 +5,10 @@ options {
     listen-on { {{ dns_ip }}; 127.0.0.1; };
     listen-on-v6 { none; };
 
-    // rekurzija samo za mrezu projekta i lokalni host; nikad otvoreni resolver
-    recursion yes;
-    allow-recursion { {{ fw_mreza }}; 127.0.0.1; };
+    // samo autoritativni odgovori za zonu projekta; VM-ovi nemaju izlaz na
+    // internet pa vanjska imena ne trebaju (nema rekurzije ni prosljedjivanja)
+    recursion no;
     allow-query { {{ fw_mreza }}; 127.0.0.1; };
-
-    forwarders { {{ upstream_dns | join('; ') }}; };
-    forward only;
 
     dnssec-validation no;
 

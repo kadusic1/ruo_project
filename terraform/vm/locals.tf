@@ -12,12 +12,3 @@ locals {
   vm_ips     = { for ime, s in var.segments : ime => s.ip }
   vm_subnets = { for ime, s in var.segments : ime => s.subnet }
 }
-
-# DNS serveri po VM-u: dns VM koristi vanjske, svi ostali nas dns VM
-locals {
-  vm_dns = {
-    for ime, _ in var.segments : ime => (
-      ime == "dns" ? var.upstream_dns : [local.vm_ips["dns"]]
-    )
-  }
-}
