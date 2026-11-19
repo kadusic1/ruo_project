@@ -10,7 +10,7 @@ fw_segmenti: "{{ tf_subnets }}"
 
 # internet -> segment
 fw_javno:
-  - { do: web, portovi: [80, 443] }
+  - { do: web, portovi: [80] }
 
 # segment -> segment (slojevi: web -> app -> db, svi -> dns)
 fw_pravila:
