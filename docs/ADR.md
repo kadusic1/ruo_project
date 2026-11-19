@@ -140,6 +140,11 @@ nftables `ip ruo`. Politika je zapisana kao podaci u `ansible/group_vars/rtr/var
   Zasebni VM ne otvara ništa novo ni na jednom sloju aplikacije.
 - Ulaz izvana dozvoljava pravilo `iifname <uplink> → web 80`. Uplink se otkriva iz zadane rute
   hosta, a promet koji ne dodiruje `10.40.0.0/21` vatrozid ne dira (libvirt, Docker i ostalo rade normalno).
+- **Baza bez objavljenog porta.** Kontejner baze radi s `network_mode: host` i bez `ports:`, pa
+  MariaDB sluša direktno na adresi db VM-a, a do porta 3306 smije doći samo app segment (pravilo na
+  hostu). `ports: "3306:3306"` bi upravo bio objavljen port. Docker bridge mreža bez porta bi bazu
+  sakrila i od app VM-a, jer backend nije na istom Docker daemonu. Mrežnu granicu baze zato
+  određuje vatrozid hosta, a ne Docker.
 - Gubi se: 4 VM-a troše više resursa (4 × 1 GiB RAM). Host postaje ruter, pa `make config` i
   `make destroy` traže sudo. Vatrozid je jedna tačka kontrole (nema dodatnog vatrozida unutar VM-ova).
   Kod je složeniji (prenos slika bez interneta, split DNS na hostu).
