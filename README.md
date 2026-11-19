@@ -300,7 +300,8 @@ isključuje njihovu provjeru (`host_key_checking = False`).
 ### Izlaz testova (`make test`)
 
 Redovi `-> internet :443` u `tests/isolation.sh` provjeravaju izlaz VM-ova na internet (veza
-prema `1.1.1.1:443`): ne smije nijedan VM. Ulaz izvana na web je samo tcp 80.
+prema `1.1.1.1:443`): ne smije nijedan VM. Red `db -> host-gw :53` provjerava da VM ne dobija DNS
+izlaz preko libvirtovog dnsmasq-a na gatewayu (lanac `input`). Ulaz izvana na web je samo tcp 80.
 
 ```
 bash tests/isolation.sh
@@ -321,6 +322,7 @@ Matrica povezivosti (inventar: .../ansible/inventory.ini)
   db    -> internet   :443    blokirano   (ocekivano: blokirano  ) ok
   dns   -> internet   :443    blokirano   (ocekivano: blokirano  ) ok
   web   -> internet   :443    blokirano   (ocekivano: blokirano  ) ok
+  db    -> host-gw    :53     blokirano   (ocekivano: blokirano  ) ok
 
 sve provjere odgovaraju ocekivanjima
 bash tests/dns.sh
