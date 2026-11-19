@@ -10,7 +10,7 @@
                 playbook_dir ~ '/.secrets/tsig_ruo-tf length=44 chars=ascii_letters,digits') }}
   no_log: true
 
-- name: Upisi TSIG kljuc (cipa ga samo BIND)
+- name: Upisi TSIG kljuc (cita ga samo BIND)
   ansible.builtin.copy:
     content: |
       key "{{ dns_tsig_key_name }}" {
