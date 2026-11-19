@@ -463,6 +463,11 @@ Opcija 2. Ansible `lookup('ansible.builtin.password', …)` pri prvom pokretanju
   lozinku baze zna samo db VM.
 - Raniji commitovi su imali podrazumijevane lozinke u `compose.yaml`. One su prepisivanjem historije
   uklonjene iz repozitorija i nisu u upotrebi, jer se sve lozinke sada generišu.
+- **Svjesni izuzetak:** lozinka `packer` za korisnika `ubuntu` je u Gitu u čistom obliku
+  (`packer/seed/user-data`, `ssh_password` u `packer/ubuntu.pkr.hcl`). Služi samo Packeru za SSH
+  na privremeni build VM na hostu. Prije snimanja slike se zaključava (`passwd -l ubuntu`), a VM-ovi
+  ionako ne primaju prijavu lozinkom (`ssh_pwauth: false`, provjerava `tests/ssh.sh`), pa ne
+  otvara pristup nijednom VM-u projekta.
 - Gubi se: tajne postoje samo na jednom hostu (nema dijeljenja ni rezervne kopije). Ako se
   `ansible/.secrets/` obriše dok VM-ovi postoje, nova lozinka se ne poklapa s već inicijalizovanom
   bazom. Rješenje je `make destroy` (briše i tajne i VM-ove), pa `make all`.
