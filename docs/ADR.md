@@ -3,6 +3,13 @@ title: "Troslojna aplikacija kao kod: dizajnerske odluke"
 subtitle: "Računarstvo u oblaku, II ciklus, III semestar, 2026/27"
 author: "Adi Kadušić"
 lang: bs
+papersize: a4
+toc-title: "Sadržaj"
+header-includes:
+  - \AtBeginDocument{\renewcommand{\figurename}{Slika}\renewcommand{\tablename}{Tabela}}
+  - \sloppy
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
 ---
 
 **Student:** Adi Kadušić\
@@ -32,7 +39,7 @@ nastaje Packerom, VM-ove i DNS zapise pravi Terraform, a konfiguraciju i isporuk
 # Pregled dizajnerskih odluka
 
 | ID   | Pitanje                          | Izabrana opcija |
-| ----- | --------------- | ------------------------------------------------------------------ |
+| -------- | ------------------ | ------------------------------------------------------------- |
 | DO-1 | Koja aplikacija i koje tehnologije za svaki sloj? | vlastiti invoice tracker: Next.js (statički export) + nginx, Go, MariaDB 11.4 |
 | DO-2 | Koliko VM-ova i kako su komponente raspoređene na njih? | opcija B: 4 VM-a (web, app, db, dns), svaki u svojoj libvirt mreži u `route` modu; host usmjerava i filtrira (nftables); DNS na zasebnom VM-u |
 | DO-3 | Kakav je plan adresiranja? | `10.40.N.0/29` po segmentu (1 web, 2 app, 3 db, 4 dns), host `.1`, VM `.2`, statičke adrese iz cloud-init-a, bez DHCP-a |
@@ -125,6 +132,8 @@ nftables `ip ruo`. Politika je zapisana kao podaci u `ansible/group_vars/rtr/var
   kompromitovanom web VM-u ne može otvoriti put do baze.
 - Isti mehanizam daje kontrolu izlaza: **nijedan VM nema izlaz na internet**, pa podaci iz baze ne
   mogu lako napustiti sistem, a napadač ne može preuzeti alate, čak ni s preuzetog frontenda.
+  Lanac `input` zatvara i put preko samog hosta: libvirt na `.1` svakog segmenta pokreće dnsmasq
+  koji bi prosljeđivao vanjska imena, pa VM ne smije otvoriti novu vezu prema hostu.
 - **DNS na zasebnom VM-u.** Na web VM-u (izloženom) bi preuzimanje frontenda značilo i kontrolu
   nad imenima. Napadač bi mogao preusmjeriti `db.projekat.lab`. Na app ili db VM-u bi taj VM morao
   primati DNS promet iz drugih segmenata, a to znači dodatni otvoren port na osjetljivom sloju.
@@ -226,9 +235,8 @@ Cloud-init (`terraform/vm/cloud-init/`) zatim postavlja hostname, korisnika `stu
 
 ## Obrazloženje i posljedice
 
-- Opcija 1 je u ranijoj verziji projekta postojala (rola `docker` i privremeni izlaz). Bila je
-  izbačena jer je značila da app i db, makar privremeno, imaju put prema internetu, a to ruši
-  pravilo izolacije iz DO-2. Ako bi run pukao prije ponovnog zatvaranja, izlaz bi ostao otvoren.
+- Opcija 1 znači da app i db, makar privremeno, imaju put prema internetu, a to ruši pravilo
+  izolacije iz DO-2. Ako bi run pukao prije ponovnog zatvaranja, izlaz bi ostao otvoren.
   S Packer slikom **vatrozid se primijeni jednom i ostaje zatvoren**.
 - Datirana slika s checksumom daje istu osnovu pri svakom buildu. `current` bi se mijenjala ispod projekta.
 - Konfiguracija je brža i jednostavnija: Ansible ništa ne instalira na VM-ovima, samo konfiguriše.
