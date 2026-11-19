@@ -1,5 +1,7 @@
 ---
+# web ne koristi lozinke baze (env.j2), pa ih ne cita
 - name: Procitaj ili generisi lozinke baze
+  when: app_profile in ['db', 'app']
   ansible.builtin.set_fact:
     app_db_password: >-
       {{ lookup('ansible.builtin.password',
