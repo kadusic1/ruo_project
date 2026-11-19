@@ -29,7 +29,7 @@ APT_UPDATED=0
 apt_install() {
   local p miss=()
   for p in "$@"; do
-    dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'ok installed' || miss+=("$p")
+    [[ "$(dpkg-query -W -f='${Status}' "$p" 2>/dev/null || true)" == *"ok installed"* ]] || miss+=("$p")
   done
   if [ "${#miss[@]}" -eq 0 ]; then ok "vec instalirano: $*"; return; fi
   if [ "$APT_UPDATED" = 0 ]; then sudo apt-get update -y; APT_UPDATED=1; fi
@@ -39,7 +39,7 @@ apt_install() {
 
 # dodaje korisnika u grupu samo ako vec nije clan
 add_group() {
-  if id -nG "$USER" | tr ' ' '\n' | grep -qx "$1"; then
+  if [[ " $(id -nG "$USER") " == *" $1 "* ]]; then
     ok "$USER je u grupi $1"
   else
     sudo usermod -aG "$1" "$USER"; NEED_RELOGIN=1
@@ -147,8 +147,10 @@ if ! $V pool-info default >/dev/null 2>&1; then
   $V pool-define-as default dir --target /var/lib/libvirt/images >/dev/null
   ok "pool default definisan"
 fi
-if $V pool-info default | grep -q '^Autostart:.*no'; then $V pool-autostart default >/dev/null; fi
-if ! $V pool-info default | grep -q '^State:.*running'; then $V pool-start default >/dev/null; fi
+# izlaz se cita u varijablu: `virsh | grep -q` uz pipefail zna vratiti gresku (SIGPIPE) i kad grep nadje red
+POOL="$($V pool-info default)"
+if grep -qE '^Autostart:\s+no' <<<"$POOL"; then $V pool-autostart default >/dev/null; fi
+if ! grep -qE '^State:\s+running' <<<"$POOL"; then $V pool-start default >/dev/null; fi
 ok "pool default aktivan i s autostartom"
 
 step "5/7 Docker (compose v2 i buildx)"
