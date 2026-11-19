@@ -121,7 +121,8 @@ lokalne mreže mora imati rutu za `10.40.1.0/29` preko hosta. Sam host aplikacij
   `10.40.0.0/21` i s localhosta. Vanjska imena dobijaju `REFUSED`, jer VM-ovima ne trebaju.
 - VM-ovi dobijaju dns VM kao resolver iz cloud-init-a. Komponente se adresiraju **samo imenima**:
   `db.projekat.lab` (DSN backenda) i `app.projekat.lab` (`BACKEND_URL` za nginx). U `app/` i u
-  rolama nema IP adresa.
+  rolama nema adresa drugih komponenti, samo loopback `127.0.0.1` (healthcheck kontejnera i
+  `listen-on` BIND-a).
 - Host razrješava zonu preko split DNS-a (rola `host_dns`, unit `ruo-dns.service`):
   `resolvectl` šalje na dns VM samo upite za `~projekat.lab`, a sve ostalo ide kao i prije.
 - TTL ima jedan izvor: `dns_ttl` u `terraform/vm`. Odatle ga čitaju i rola `dns` (zonski fajl) i
@@ -129,7 +130,9 @@ lokalne mreže mora imati rutu za `10.40.1.0/29` preko hosta. Sam host aplikacij
 
 ## 5. Tajne
 
-U Gitu nema nijedne tajne ni primjera s pravom lozinkom. Tajne se **generišu pri prvom pokretanju**
+U Gitu nema nijedne tajne projekta ni primjera s pravom lozinkom. Jedini izuzetak je build lozinka
+`packer` za privremeni Packer VM: zaključava se prije snimanja slike, a VM-ovi ne primaju prijavu
+lozinkom (DO-9 u [ADR-ovima](docs/ADR.md)). Tajne se **generišu pri prvom pokretanju**
 (Ansible `lookup('password')`) i čuvaju samo na hostu, u `ansible/.secrets/` (u `.gitignore`):
 
 | Fajl                 | Šta je                         | Ko ga koristi                                   |
@@ -173,6 +176,7 @@ projekat/
 │   └── roles/               # firewall, dns, host_dns, app
 ├── tests/                   # izolacija, DNS, SSH, aplikacija, trajnost baze
 ├── docs/                    # ADR.md + ADR.pdf (DO i ADR-ovi), dijagram (png + excalidraw)
+├── setup.sh                 # instalacija i podešavanje alata na hostu (make setup)
 ├── ssh_config               # ručni SSH na VM-ove
 └── Makefile
 ```
@@ -259,8 +263,9 @@ Fajl `ssh_config` postavlja korisnika `student` za sve VM-ove, pa se ne navodi `
 ssh -F ssh_config web.projekat.lab     # ili po adresi: ssh -F ssh_config 10.40.3.2
 ```
 
-VM-ovi pri svakom ponovnom kreiranju dobijaju nove ključeve hosta, pa `ssh_config`, `ansible.cfg` i
-testovi te ključeve ne pamte (`StrictHostKeyChecking no`, `UserKnownHostsFile /dev/null`).
+VM-ovi pri svakom ponovnom kreiranju dobijaju nove ključeve hosta. Zato `ssh_config` i testovi te
+ključeve ne pamte (`StrictHostKeyChecking no`, `UserKnownHostsFile /dev/null`), a `ansible.cfg`
+isključuje njihovu provjeru (`host_key_checking = False`).
 
 ## 9. Šta radi `make all`, korak po korak
 
