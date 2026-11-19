@@ -59,7 +59,7 @@ resource "libvirt_cloudinit_disk" "init" {
   })
   network_config = templatefile("${path.module}/cloud-init/network-config.tftpl", {
     mac     = each.value.mac
-    address = "${each.value.ip}/24"
+    address = "${each.value.ip}/${split("/", each.value.subnet)[1]}"
     gateway = cidrhost(each.value.subnet, 1)
     dns     = join(", ", local.vm_dns[each.key])
   })
