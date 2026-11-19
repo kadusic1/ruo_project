@@ -85,10 +85,12 @@ drugom sloju vodi kroz host, a host propušta samo propisane portove. Cijena je 
 ### Kako je izvedena izolacija
 
 1. **Mreža**: svaki VM je sam u svojoj L2 mreži, pa nema "susjeda" do kojeg bi došao mimo hosta.
-   Libvirt u `route` modu ne radi NAT ni filtriranje, nego samo daje bridge s adresom `.1`.
+   Libvirt u `route` modu ne radi NAT. Daje bridge s adresom `.1` i na njoj pokreće dnsmasq (DNS).
 2. **Vatrozid na hostu**: rola `firewall` pravi tabelu `ip ruo` (`/etc/nftables.d/ruo.nft`).
    Lanac `forward` propušta samo ono što je navedeno, a sav ostali promet koji dodiruje
-   `10.40.0.0/21` odbacuje (default deny, uz log `ruo-drop:`). Tabele libvirta i Dockera se ne diraju.
+   `10.40.0.0/21` odbacuje (default deny, uz log `ruo-drop:`). Lanac `input` odbacuje svaku novu
+   vezu s VM-a prema samom hostu (npr. dnsmasq na `.1`, koji bi VM-ovima dao DNS izlaz na internet),
+   a propušta samo odgovore na veze koje otvara host. Tabele libvirta i Dockera se ne diraju.
    Systemd unit `ruo-firewall.service` ponovo učitava pravila poslije restarta hosta.
 3. **Politika je zapisana kao podaci** u `ansible/group_vars/rtr/vars.yml`, a šablon
    `ruo.nft.j2` je prevodi u pravila. Promjena politike ide samo tu:

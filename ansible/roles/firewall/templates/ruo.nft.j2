@@ -30,4 +30,13 @@ table ip ruo {
     limit rate 5/minute log prefix "ruo-drop: "
     drop
   }
+
+  # promet VM -> sam host (npr. libvirtov dnsmasq na .1 bi VM-ovima dao DNS
+  # izlaz na internet): prolaze samo odgovori na veze koje je otvorio host
+  chain input {
+    type filter hook input priority filter; policy accept;
+
+    ct state established,related accept
+    iifname != "lo" ip saddr {{ fw_mreza }} drop
+  }
 }

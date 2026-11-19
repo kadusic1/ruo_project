@@ -119,6 +119,7 @@ proba app internet "$INT_IP" "$INT_PORT" blokirano  # app nema izlaz
 proba db  internet "$INT_IP" "$INT_PORT" blokirano  # db nema izlaz
 proba dns internet "$INT_IP" "$INT_PORT" blokirano  # dns nema izlaz
 proba web internet "$INT_IP" "$INT_PORT" blokirano  # web nema izlaz
+proba db  host-gw  "${DB%.*}.1" 53     blokirano  # db -> dnsmasq hosta (DNS izlaz)
 
 echo
 if [ "$RAZLIKA" -eq 0 ]; then
