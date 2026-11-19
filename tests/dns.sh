@@ -57,7 +57,7 @@ fi
 echo "DNS provjere (zona $ZONE, server $DNS_IP)"
 
 # zapisi servisa u zoni (dodaje ih Terraform preko RFC 2136)
-for ime in web app db; do
+for ime in web app db dns; do
   var="${ime^^}_IP"
   rezultat "dig @$DNS_IP $ime.$ZONE" "${!var}" \
     "$(dig +time=2 +tries=1 +short "@$DNS_IP" "$ime.$ZONE" A | head -1)"
