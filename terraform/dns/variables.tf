@@ -9,5 +9,5 @@ variable "tsig_secret" {
 variable "service_names" {
   description = "imena servisa za A zapise u zoni"
   type        = list(string)
-  default     = ["web", "app", "db"]
+  default     = ["web", "app", "db", "dns"]
 }
