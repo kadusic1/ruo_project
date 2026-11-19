@@ -19,13 +19,16 @@ TSIG := TF_VAR_tsig_secret="$$(cat ansible/.secrets/tsig_ruo-tf 2>/dev/null || t
 banner = printf '\n\033[1;36m== %s\033[0m\n' '$(1)'
 need = command -v $(1) >/dev/null || { echo "Nedostaje '$(1)'"; exit 1; }
 
-.PHONY: help check image clean-image infra config dns deploy test all destroy
+.PHONY: help setup check image clean-image infra config dns deploy test all destroy
 
 ##@ Pomoc
 help: ## ovaj popis
 > @awk 'BEGIN{FS=":.*## "} /^##@/{printf "\n\033[1m%s\033[0m\n", substr($$0,5)} /^[a-zA-Z0-9_-]+:.*## /{printf "  \033[36m%-10s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
 
 ##@ Okruzenje
+setup: ## instalira i podesava alate na hostu (Ubuntu 24.04, trazi sudo; idempotentno)
+> ./setup.sh
+
 check: ## provjera alata, libvirta i SSH kljuca
 > @$(call need,terraform)
 > @$(call need,packer)
