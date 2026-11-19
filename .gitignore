@@ -47,7 +47,7 @@ out/
 .env.*
 !*.example
 
-docs
+docs2
 projekt.pdf
 CLAUDE.md
 
