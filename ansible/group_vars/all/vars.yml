@@ -1,9 +1,10 @@
 ---
 # Zajednicke varijable za sve VM-ove i host.
 
-# Cijeli adresni prostor projekta; vatrozid ne dira promet koji ga ne dodiruje
+# Adresni prostor projekta: najmanji agregat koji pokriva sve segmente
+# (10.40.0.0-10.40.7.255, segmenti 1-7); vatrozid ne dira promet koji ga ne dodiruje
 # (Docker, drugi libvirt, hotspot...). Treba i dns VM-u za allow-query.
-fw_mreza: 10.40.0.0/16
+fw_mreza: 10.40.0.0/21
 
 # Slike aplikacije po sloju (rola app); imena moraju odgovarati
 # app/compose.yaml. Host ih gradi ili povlaci, a VM-ovi ih dobijaju preko
