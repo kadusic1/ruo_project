@@ -1,0 +1,5 @@
+---
+# Ubuntu 25.10+ (i WSL na Windowsu) kao sudo koristi sudo-rs, koji Ansibleov
+# prompt za lozinku umota u svoj tekst pa ga -K ne prepozna. Klasicni sudo je
+# tamo dostupan kao sudo.ws; gdje ga nema, sudo je vec klasicni.
+ansible_become_exe: "{{ 'sudo.ws' if lookup('pipe', 'command -v sudo.ws || true') else 'sudo' }}"
