@@ -446,7 +446,7 @@ Opcija 2. Ansible `lookup('ansible.builtin.password', …)` pri prvom pokretanju
 - TSIG: BIND ga dobija kao `/etc/bind/ruo-tf.key` (0640, root:bind), a Terraform preko
   `TF_VAR_tsig_secret` iz Makefilea (varijabla je `sensitive`).
 - Lozinke baze: rola `app` pravi `/opt/ruo-app/.env` (root, 0600) **samo s varijablama tog sloja**.
-  db dobija `MARIADB_*`, app samo `DSN`, a web nijednu lozinku (samo `BACKEND_URL`).
+  db dobija `MARIADB_*`, app `DSN` i `FRONTEND_ORIGIN`, a web nijednu lozinku (samo `BACKEND_URL`).
 - Taskovi s tajnama imaju `no_log: true`. SSH: u VM ide samo javni ključ, privatni ostaje na hostu.
 
 ## Obrazloženje i posljedice

@@ -138,7 +138,7 @@ U Gitu nema nijedne tajne ni primjera s pravom lozinkom. Tajne se **generišu pr
 
 - Ista naredba drugi put čita postojeći fajl, pa se lozinke ne mijenjaju između pokretanja.
 - Na VM-u je `.env` u `/opt/ruo-app/.env` (vlasnik root, 0600) i svaki sloj dobija **samo svoje**
-  varijable: web samo `BACKEND_URL`, app samo `DSN`, db samo `MARIADB_*`. Taskovi s tajnama imaju `no_log: true`.
+  varijable: web samo `BACKEND_URL`, app `DSN` i `FRONTEND_ORIGIN`, db samo `MARIADB_*`. Taskovi s tajnama imaju `no_log: true`.
 - SSH: VM-ovi primaju samo javni ključ hosta (`~/.ssh/id_ed25519.pub`). Prijava lozinkom je isključena.
 - `.gitignore` isključuje `*.tfstate`, `.terraform/`, `.env`, `ansible/.secrets/`, generisani inventar i `*.qcow2`.
 
