@@ -36,6 +36,7 @@ check: ## provjera alata, libvirta i SSH kljuca
 > @$(call need,docker)
 > @docker info >/dev/null 2>&1 || { echo "docker ne radi (korisnik u grupi docker?)"; exit 1; }
 > @$(call need,virsh)
+> @$(call need,mkisofs)
 > @virsh -c qemu:///system list >/dev/null || { echo "libvirt ne radi"; exit 1; }
 > @test -f ~/.ssh/id_ed25519.pub || { echo "Nema ~/.ssh/id_ed25519.pub (ssh-keygen -t ed25519)"; exit 1; }
 > @echo "sve je spremno"
