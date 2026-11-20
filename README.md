@@ -206,6 +206,13 @@ Podržan je i WSL2 Ubuntu 24.04 na Windowsu 11 (nested virtualizacija, `/dev/kvm
 pokreće u WSL terminalu i sama uključuje systemd i `systemd-resolved` (`/etc/wsl.conf`). Kad to
 zatraži, u PowerShellu se pokrene `wsl --shutdown` i zatim ponovo `./setup.sh`.
 
+**WSL: preglednik.** Na WSL-u prvo instalirajte Firefox unutar WSL-a (radi jer `setup.sh` uključuje
+systemd):
+
+```bash
+sudo snap install firefox        # ili: sudo apt install -y firefox (na Ubuntuu 24.04 isto instalira snap)
+```
+
 Korišteno i provjereno s: Terraform 1.17.2, Packer 1.16.2, ansible-core 2.16.3 (community.docker
 3.7.0, ansible.posix 1.5.4), Docker 29.9.3, libvirt 10.0.0.
 
@@ -246,6 +253,15 @@ make all        # drugi put: Terraform 0 promjena, Ansible changed=0
 ```
 
 Aplikacija je u pregledniku na hostu: **http://web.projekat.lab/**
+
+**Na WSL-u** Windows preglednik ne može otvoriti tu adresu: ime `web.projekat.lab` (split DNS) i
+mreža `10.40.x.x` postoje samo unutar WSL-a. Zato se stranica otvara Firefoxom iz WSL-a (njegov
+prozor se pojavi u Windowsu preko WSLg-a):
+
+```bash
+curl -s http://web.projekat.lab/ | head      # brza provjera da stranica odgovara
+firefox http://web.projekat.lab/ &           # otvara aplikaciju
+```
 
 ### Uklanjanje
 
