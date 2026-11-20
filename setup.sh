@@ -117,9 +117,9 @@ fi
 if systemctl is-active -q systemd-resolved; then ok "systemd-resolved (split DNS za projekat.lab)"
 else warn "systemd-resolved ne radi: host nece razrjesavati imena projekat.lab"; fi
 
-step "2/7 Osnovni paketi (git, make, curl, ansible, dig, nftables, xorriso)"
+step "2/7 Osnovni paketi (git, make, curl, ansible, dig, nftables, xorriso, genisoimage)"
 apt_install git make curl wget gnupg lsb-release ca-certificates python3 openssh-client \
-  ansible bind9-dnsutils iproute2 nftables xorriso
+  ansible bind9-dnsutils iproute2 nftables xorriso genisoimage
 
 step "3/7 HashiCorp repozitorij: Terraform i Packer"
 KEYRING=/usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -177,7 +177,7 @@ else
 fi
 
 step "7/7 Provjera"
-for t in git make terraform packer ansible-playbook docker virsh qemu-img xorriso dig curl nft resolvectl; do
+for t in git make terraform packer ansible-playbook docker virsh qemu-img xorriso mkisofs dig curl nft resolvectl; do
   if have "$t"; then ok "$t"; else warn "$t nije instaliran"; fi
 done
 COLL="$(ansible-galaxy collection list 2>/dev/null || true)"
